@@ -8,6 +8,7 @@
       </div>
       <div class="imageBox">
         <t-image
+          v-if="currentImageUrl"
           class="image"
           :src="currentImageUrl"
           fit="contain"
@@ -22,6 +23,10 @@
             </div>
           </template>
         </t-image>
+        <div v-else class="emptyImagePlaceholder">
+          <i-pic theme="outline" size="48" fill="#999" />
+          <span>暂无图片</span>
+        </div>
         <t-dropdown :options="options" @click="clickHandler">
           <div class="upload ac">
             <i-upload theme="outline" size="18" fill="#fff" />
@@ -164,6 +169,19 @@ async function getStoryboardImage() {
             pointer-events: auto;
           }
         }
+      }
+
+      .emptyImagePlaceholder {
+        width: 100%;
+        height: 100%;
+        border-radius: 10px;
+        background: var(--td-bg-color-component);
+        color: var(--td-text-color-placeholder);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
       }
 
       .upload {

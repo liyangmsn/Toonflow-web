@@ -84,7 +84,15 @@
           </div>
           <div class="characterList">
             <div v-for="(char, index) in currentCharacters" :key="index" class="characterItem">
-              <t-image :src="char.avatar" fit="cover" class="characterAvatar" :style="{ width: '80px', height: '80px', borderRadius: '8px' }" />
+              <t-image
+                v-if="char.avatar"
+                :src="char.avatar"
+                fit="cover"
+                class="characterAvatar"
+                :style="{ width: '80px', height: '80px', borderRadius: '8px' }" />
+              <div v-else class="characterAvatarEmpty">
+                <i-pic theme="outline" size="28" fill="#999" />
+              </div>
               <t-tag>
                 {{ char.name }}（{{
                   char.type == "role"
@@ -787,6 +795,17 @@ function getFileExtension(path: string) {
       }
     }
   }
+}
+
+.characterAvatarEmpty {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  background: var(--td-bg-color-component);
+  color: var(--td-text-color-placeholder);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
 

@@ -291,17 +291,22 @@ function editStoryboaryImage(item: Storyboard, images: string[], insertAfterInde
         // 先查顶层 asset
         const asset = props.assetsData.find((a) => a.id === id);
         if (asset) {
-          if (asset.src) assetsImages.push(asset.src);
+          // 即使资产尚未生成图片，也要保留它在引用列表中的位置，避免后续资产前移。
+          assetsImages.push(asset.src || "");
           continue;
         }
         // 再查 derive
+        let deriveFound = false;
         for (const a of props.assetsData) {
           const derive = a.derive?.find((d) => d.id === id);
           if (derive) {
-            if (derive.src) assetsImages.push(derive.src);
+            assetsImages.push(derive.src || "");
+            deriveFound = true;
             break;
           }
         }
+        // 关联资产找不到时同样保留空槽位，保证引用序号稳定。
+        if (!deriveFound) assetsImages.push("");
       }
       imagesPush = imagesPush.concat(assetsImages);
     }

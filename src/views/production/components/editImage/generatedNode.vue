@@ -36,7 +36,10 @@
     <div v-show="selected" class="parameter" @wheel.stop @mousedown.stop>
       <div class="imageRefs f w">
         <div v-for="(item, index) in data.references" :key="index" class="refThumb">
-          <t-image :src="item.image" fit="cover" class="refImg" />
+          <t-image v-if="item.image" :src="item.image" fit="cover" class="refImg" />
+          <div v-else class="refImg refImgEmpty" title="暂无图片">
+            <i-pic theme="outline" size="20" fill="#999" />
+          </div>
         </div>
       </div>
       <div class="text w">
@@ -105,7 +108,8 @@ const options = [
 ];
 
 const references = computed(() => {
-  return props.data.references.map((i) => ({ type: "image" as const, src: i.image })).filter(Boolean);
+  // 保留空引用槽位，使提示词中的 @图N 始终对应原始资产序号。
+  return props.data.references.map((i) => ({ type: "image" as const, src: i.image }));
 });
 
 const props = defineProps<{
@@ -179,7 +183,8 @@ async function handleGenerate() {
   generating.value = true;
   try {
     const { data } = await axios.post("/production/editImage/generateFlowImage", {
-      references: props.data.references.map((i) => i.image).filter(Boolean),
+      // 空字符串由后端转换为透明占位图，不能在这里过滤，否则后续引用会前移。
+      references: props.data.references.map((i) => i.image),
       model: props.data.model,
       quality: props.data.quality,
       ratio: props.data.ratio,
@@ -332,6 +337,13 @@ onMounted(() => {
           width: 45px;
           height: 45px;
           border-radius: 10px;
+        }
+        .refImgEmpty {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px dashed var(--td-border-level-2-color);
+          background: var(--td-bg-color-component);
         }
       }
     }

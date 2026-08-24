@@ -178,8 +178,7 @@ function _doSyncReferences() {
           return { image: (n.data as GeneratedNodeData).generatedImage || "" };
         }
         return { image: "" };
-      })
-      .filter((i) => i.image);
+      });
 
     // 仅在数据变化时才更新，避免无效的响应式触发
     const currentRefs: { image: string }[] = (genNode.data as GeneratedNodeData).references ?? [];
