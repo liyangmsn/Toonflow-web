@@ -65,3 +65,28 @@ export async function loadInitialAudioWaveforms(tracksStore: any) {
     }
   }
 }
+
+/** 探测媒体真实时长（只读取元数据，比抽帧更快） */
+export function probeMediaDuration(url: string, kind: "video" | "audio" = "video"): Promise<number> {
+  return new Promise((resolve) => {
+    if (!url) return resolve(0);
+    const el = document.createElement(kind);
+    let settled = false;
+    const finish = (duration: number) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      el.onloadedmetadata = null;
+      el.onerror = null;
+      el.removeAttribute("src");
+      el.load();
+      resolve(duration > 0 && Number.isFinite(duration) ? duration : 0);
+    };
+    const timer = setTimeout(() => finish(0), 15000);
+    el.preload = "metadata";
+    el.crossOrigin = "anonymous";
+    el.onloadedmetadata = () => finish(el.duration);
+    el.onerror = () => finish(0);
+    el.src = url;
+  });
+}

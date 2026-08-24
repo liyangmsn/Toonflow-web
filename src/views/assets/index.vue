@@ -328,6 +328,13 @@
                       </template>
                       <template #operation="{ row: subRow }">
                         <t-space :size="0">
+                          <t-button
+                            :theme="subRow.isCurrent ? 'success' : 'primary'"
+                            variant="text"
+                            :disabled="subRow.isCurrent"
+                            @click="selectCurrentAudio(subRow)">
+                            {{ subRow.isCurrent ? $t("workbench.assets.currentAudioInUse") : $t("workbench.assets.setAsCurrentAudio") }}
+                          </t-button>
                           <t-button theme="danger" variant="text" :disabled="isGenerating(subRow.id)" @click="handleDelete(subRow)">
                             <template #icon>
                               <t-icon name="delete" />
@@ -355,6 +362,12 @@
                 </template>
                 <template #operation="{ row }">
                   <t-space :size="0">
+                    <t-button theme="primary" variant="text" :disabled="isGenerating(row.id)" @click="openAudioGeneration(row)">
+                      <template #icon>
+                        <i-magic :size="18" />
+                      </template>
+                      {{ $t("workbench.assets.generate") }}
+                    </t-button>
                     <t-button theme="primary" variant="text" @click="handleEdit(row)">
                       <template #icon>
                         <t-icon name="edit" />
@@ -382,6 +395,7 @@
       :formData="formData"
       @getFilteredData="getFilteredData(assetOptions)" />
     <generateImage v-model="generateImageShow" @update="loadCurrentTabData" :formData="currentAssetData" />
+    <generateAudio v-model="audioGenerationShow" @update="loadCurrentTabData" :formData="audioGenerationData" />
 
     <addAudioAssets v-model="addAudioShow" v-if="addAudioShow" :formData="audioFormData" @getFilteredData="getFilteredData(assetOptions)" />
     <t-dialog
@@ -440,6 +454,7 @@ import type { TabValue, TableProps } from "tdesign-vue-next";
 import addAssets from "./components/addAssets.vue";
 import addAudioAssets from "./components/addAudioAssets.vue";
 import generateImage from "./components/generateImage.vue";
+import generateAudio from "./components/generateAudio.vue";
 import projectStore from "@/stores/project";
 import settingStore from "@/stores/setting";
 const { otherSetting } = storeToRefs(settingStore());
@@ -540,6 +555,7 @@ interface Asset {
   type: "role" | "tool" | "scene" | "clip"; // "角色" | "道具" | "场景" | "素材"
   state: string;
   sonAssets?: Asset[]; // 子资产列表
+  isCurrent?: boolean; // 音色子版本是否为当前使用
   imageId: number;
   promptState: string;
   filePath: string;
@@ -1114,6 +1130,38 @@ function generate(row: any) {
     src: row.src,
   };
   generateImageShow.value = true;
+}
+// 音频生成
+const audioGenerationShow = ref(false);
+const audioGenerationData = ref<{ id?: number; name?: string; describe?: string; type?: string }>({
+  id: undefined,
+  name: "",
+  describe: "",
+  type: "audio",
+});
+function openAudioGeneration(row: any) {
+  audioGenerationData.value = {
+    id: row.id,
+    name: row.name,
+    describe: row.describe,
+    type: "audio",
+  };
+  audioGenerationShow.value = true;
+}
+// 切换音色当前使用的版本
+async function selectCurrentAudio(subRow: any) {
+  try {
+    await axios.post("/assets/selectAudioVersion", { childId: subRow.id });
+    tableData.value.forEach((row) => {
+      if (row.id !== subRow.assetsId) return;
+      (row.sonAssets || []).forEach((child) => {
+        child.isCurrent = child.id === subRow.id;
+      });
+    });
+    window.$message.success($t("workbench.assets.switchAudioSuccess"));
+  } catch (e: any) {
+    window.$message.error(e?.message ?? $t("workbench.assets.switchAudioFail"));
+  }
 }
 // 编辑
 function handleEdit(row: any) {

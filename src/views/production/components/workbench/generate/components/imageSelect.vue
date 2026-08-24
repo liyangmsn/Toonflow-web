@@ -26,15 +26,15 @@
             <span style="font-size: 20px">文</span>
           </t-tooltip>
         </template>
-        <div class="imageTitleWrap" v-if="item.sources == 'storyboard' && item.index != null">
-          {{ `P${item.index + 1}` }}
+        <div class="imageTitleWrap" v-if="(item.sources == 'storyboard' || item.sources == 'video') && item.index != null">
+          {{ item.sources == "video" ? `#${item.index + 1} · V${item.version ?? 1}` : `P${item.index + 1}` }}
         </div>
         <div class="clearBtn" @click="splitImage(index)">
           <i-close size="12" />
         </div>
         <div class="source">
           <t-tag size="small">
-            {{ item.sources == "storyboard" ? $t("workbench.generate.storyboard") : $t("workbench.generate.assets") }}
+            {{ sourceLabel(item.sources) }}
           </t-tag>
         </div>
       </div>
@@ -63,15 +63,21 @@
               <span style="font-size: 20px">文</span>
             </t-tooltip>
           </template>
-          <div class="imageTitleWrap" v-if="imageList?.[index]?.sources == 'storyboard' && imageList?.[index]?.index != null">
-            {{ `P${imageList[index]?.index + 1}` }}
+          <div
+            class="imageTitleWrap"
+            v-if="(imageList?.[index]?.sources == 'storyboard' || imageList?.[index]?.sources == 'video') && imageList?.[index]?.index != null">
+            {{
+              imageList?.[index]?.sources == "video"
+                ? `#${imageList[index]?.index + 1} · V${imageList[index]?.version ?? 1}`
+                : `P${imageList[index]?.index + 1}`
+            }}
           </div>
           <div class="clearBtn" @click.stop="clearImage(index)">
             <i-close size="12" />
           </div>
           <div class="source">
             <t-tag size="small">
-              {{ imageList?.[index]?.sources == "storyboard" ? $t("workbench.generate.storyboard") : $t("workbench.generate.assets") }}
+              {{ sourceLabel(imageList?.[index]?.sources) }}
             </t-tag>
           </div>
         </div>
@@ -85,6 +91,38 @@
       <i-plus size="24"></i-plus>
       {{ $t("workbench.generate.addReference") }}
     </div>
+
+    <!-- 参考来源选择弹窗 -->
+    <t-dialog v-model:visible="sourceDialogVisible" :header="$t('workbench.generate.selectSource')" width="480px" placement="center">
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 8px">
+          <t-button variant="outline" @click="openStoryboardDialog">{{ $t("workbench.generate.selectFromStoryboard") }}</t-button>
+          <t-button v-if="hasVideoReferenceMode" variant="outline" @click="openReferenceVideoDialog">
+            {{ $t("workbench.generate.selectFromClip") }}
+          </t-button>
+          <t-button theme="primary" @click="pickFromAssets">{{ $t("workbench.generate.selectFromAssets") }}</t-button>
+        </div>
+      </template>
+    </t-dialog>
+
+    <!-- 片段视频选择弹窗 -->
+    <t-dialog
+      v-model:visible="referenceVideoDialogVisible"
+      :header="$t('workbench.generate.selectClipVideo')"
+      :footer="false"
+      width="800px"
+      placement="center">
+      <div class="storyboardGrid">
+        <div class="storyboardItem" v-for="video in availableReferenceVideos" :key="`video:${video.id}`" @click="pickReferenceVideo(video)">
+          <div class="imageTitleWrap">
+            {{ `#${video.trackIndex + 1} · V${video.version ?? 1}` }}
+          </div>
+          <video v-if="video.src" :src="video.src" preload="metadata" muted />
+          <div v-else class="textBox ac jc">{{ $t("workbench.generate.noPreview") }}</div>
+        </div>
+        <div v-if="!availableReferenceVideos.length" class="emptyClipVideo">{{ $t("workbench.generate.noClipVideo") }}</div>
+      </div>
+    </t-dialog>
 
     <!-- 分镜选择弹窗 -->
     <t-dialog
@@ -116,15 +154,46 @@ import "@/views/production/components/workbench/type/type";
 import assetsCheck, { type AssetType, type ClipMediaType } from "@/utils/assetsCheck";
 import axios from "@/utils/axios";
 
-const props = defineProps<{
-  mode: VideoMode;
-  storyboardList: StoryboardItem[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    mode: VideoMode;
+    storyboardList: StoryboardItem[];
+    /** 其他轨道已生成的片段视频，可作为视频参考 */
+    referenceVideoList?: ReferenceVideoItem[];
+    /** 当前轨道 id，用于排除自身片段 */
+    currentTrackId?: number;
+    /** 打开片段弹窗前刷新候选列表 */
+    refreshReferenceVideos?: () => void | Promise<void>;
+  }>(),
+  {
+    referenceVideoList: () => [],
+  },
+);
 const imageList = defineModel<UploadItem[]>({
   default: () => [],
 });
 //分镜选择弹窗
 const storyboardDialogVisible = ref(false);
+//参考来源选择弹窗
+const sourceDialogVisible = ref(false);
+//片段视频选择弹窗
+const referenceVideoDialogVisible = ref(false);
+
+/** 当前模式是否支持视频参考（模式形如 videoReference 或 videoReference:2） */
+const hasVideoReferenceMode = computed(() => {
+  const mode = parseMode(props.mode as string);
+  return Array.isArray(mode) && mode.some((m) => /^videoReference(:\d+)?$/.test(String(m)));
+});
+
+/** 可选片段视频：排除当前轨道自身的片段 */
+const availableReferenceVideos = computed(() => props.referenceVideoList.filter((video) => video.trackId !== props.currentTrackId));
+
+/** 已选项的来源标签 */
+function sourceLabel(sources?: string) {
+  if (sources === "storyboard") return $t("workbench.generate.storyboard");
+  if (sources === "video") return $t("workbench.generate.clipVideo");
+  return $t("workbench.generate.assets");
+}
 
 /** 空占位项，用于首尾帧模式中未设置的槽位 */
 const EMPTY_SLOT: UploadItem = { fileType: "image", id: null, src: "" } as any;
@@ -196,61 +265,74 @@ const mixedClipMediaTypes = computed<ClipMediaType[]>(() => {
   return mode.filter((m) => m in map).map((m) => map[m]);
 });
 let currentSlot: "start" | "end" | "" = "";
+/** 添加参考：先选来源（分镜 / 片段视频 / 资产库） */
 function handleMixedAdd(slot: "start" | "end" | "" = "") {
   if (!props.mode) return window.$message.error($t("workbench.generate.notSelectMode"));
   currentSlot = slot;
+  sourceDialogVisible.value = true;
+}
+
+/** 来源：从分镜选择 */
+function openStoryboardDialog() {
+  sourceDialogVisible.value = false;
+  storyboardDialogVisible.value = true;
+}
+
+/** 来源：从片段选择（打开前刷新一次候选，确保能看到刚生成的片段） */
+async function openReferenceVideoDialog() {
+  sourceDialogVisible.value = false;
+  try {
+    await props.refreshReferenceVideos?.();
+  } catch (e) {
+    console.error("刷新片段视频列表失败:", e);
+  }
+  referenceVideoDialogVisible.value = true;
+}
+
+/** 来源：从资产库选择 */
+async function pickFromAssets() {
+  sourceDialogVisible.value = false;
+  const slot = currentSlot;
   const multiple = Array.isArray(parseMode(props.mode as string));
-  const dlg = DialogPlugin.confirm({
-    header: $t("workbench.generate.selectSource"),
-    confirmBtn: $t("workbench.generate.confirm"),
-    cancelBtn: $t("workbench.generate.cancel"),
-    onConfirm: async () => {
-      dlg.destroy();
-      const assets = await assetsCheck({ types: ["role", "tool", "scene", "clip", "audio"], clipMediaTypes: mixedClipMediaTypes.value, multiple });
+  const assets = await assetsCheck({ types: ["role", "tool", "scene", "clip", "audio"], clipMediaTypes: mixedClipMediaTypes.value, multiple });
 
-      if (!assets.length) return;
+  if (!assets.length) return;
 
-      const newItems: UploadItem[] = assets.flatMap((asset) => {
-        if (asset.type === "audio" && asset?.sonAssets?.length) {
-          return asset.sonAssets.map((sub: any) => {
-            const fileType = getFileTypeByExt(sub.src);
-            return {
-              fileType,
-              sources: "assets",
-              src: sub.src,
-              id: sub.id,
-              prompt: sub.prompt,
-            } as UploadItem;
-          });
-        }
-        const fileType = getFileTypeByExt(asset.src);
-        return [
-          {
-            fileType,
-            sources: "assets",
-            src: asset.src,
-            id: asset.id,
-            prompt: asset.prompt,
-          } as UploadItem,
-        ];
+  const newItems: UploadItem[] = assets.flatMap((asset) => {
+    if (asset.type === "audio" && asset?.sonAssets?.length) {
+      return asset.sonAssets.map((sub: any) => {
+        const fileType = getFileTypeByExt(sub.src);
+        return {
+          fileType,
+          sources: "assets",
+          src: sub.src,
+          id: sub.id,
+          prompt: sub.prompt,
+        } as UploadItem;
       });
-      if (slot === "start" || slot === "end") {
-        setFrameSlot(slot, newItems[0]);
-      } else if (props.mode === "singleImage") {
-        imageList.value = [newItems[0]];
-      } else {
-        const assetsNotAudioIds = newItems.filter((i) => i.fileType !== "audio");
-        const { data } = await axios.post("/production/workbench/getAudioBindAssetsList", {
-          assetsIds: assetsNotAudioIds.map((i) => i.id),
-        });
-        imageList.value = [...imageList.value, ...newItems, ...(data ?? [])];
-      }
-    },
-    onCancel: () => {
-      dlg.destroy();
-      storyboardDialogVisible.value = true;
-    },
+    }
+    const fileType = getFileTypeByExt(asset.src);
+    return [
+      {
+        fileType,
+        sources: "assets",
+        src: asset.src,
+        id: asset.id,
+        prompt: asset.prompt,
+      } as UploadItem,
+    ];
   });
+  if (slot === "start" || slot === "end") {
+    setFrameSlot(slot, newItems[0]);
+  } else if (props.mode === "singleImage") {
+    imageList.value = [newItems[0]];
+  } else {
+    const assetsNotAudioIds = newItems.filter((i) => i.fileType !== "audio");
+    const { data } = await axios.post("/production/workbench/getAudioBindAssetsList", {
+      assetsIds: assetsNotAudioIds.map((i) => i.id),
+    });
+    imageList.value = [...imageList.value, ...newItems, ...(data ?? [])];
+  }
 }
 function clearImage(index: number) {
   const list = ensureFrameSlots();
@@ -268,6 +350,24 @@ function pickStoryboard(sb: StoryboardItem) {
     id: sb.id,
     prompt: sb.videoDesc ?? undefined,
     index: sb.index,
+  } as UploadItem;
+
+  if (currentSlot === "start" || currentSlot === "end") {
+    setFrameSlot(currentSlot, newItem);
+  } else {
+    imageList.value = [...imageList.value, newItem];
+  }
+}
+/** 片段视频弹窗选中回调 */
+function pickReferenceVideo(video: ReferenceVideoItem) {
+  referenceVideoDialogVisible.value = false;
+  const newItem = {
+    fileType: "video",
+    sources: "video",
+    src: video.src,
+    id: video.id,
+    index: video.trackIndex,
+    version: video.version,
   } as UploadItem;
 
   if (currentSlot === "start" || currentSlot === "end") {
@@ -431,11 +531,13 @@ function splitImage(index: number) {
         border-color: var(--td-brand-color);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
       }
-      img {
+      img,
+      video {
         width: 100%;
         aspect-ratio: 16/9;
         object-fit: cover;
         display: block;
+        background: #000;
       }
       .textBox {
         aspect-ratio: 16/9;
@@ -443,6 +545,12 @@ function splitImage(index: number) {
         text-align: center;
         border: 1px solid #ccc;
       }
+    }
+    .emptyClipVideo {
+      grid-column: 1 / -1;
+      padding: 32px 0;
+      text-align: center;
+      color: var(--td-text-color-placeholder);
     }
   }
 }

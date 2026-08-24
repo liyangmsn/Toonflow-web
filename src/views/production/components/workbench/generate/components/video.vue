@@ -39,7 +39,10 @@
           </template>
           <div v-if="v.state === '生成中'" class="loadingOverlay c fc">
             <t-loading size="24px" />
-            <span class="loadingText">{{ $t("workbench.generate.generating") }}</span>
+            <span class="loadingText">{{ v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t("workbench.generate.generating") }}</span>
+            <div class="progressTrack">
+              <div class="progressFill" :style="{ width: `${Math.max(0, Math.min(100, Number(v.percent) || 0))}%` }"></div>
+            </div>
           </div>
           <t-tooltip v-if="v.state == '生成失败'" placement="top" :content="v?.errorReason! ?? ''" theme="light">
             <t-tag class="stateTag" theme="danger" size="small">
@@ -282,8 +285,25 @@ function previewVideo(v: HistoryVideoItem) {
         background: rgba(0, 0, 0, 0.45);
         gap: 4px;
         .loadingText {
+          max-width: 116px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
           font-size: 11px;
           color: #fff;
+        }
+        .progressTrack {
+          width: 104px;
+          height: 4px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.25);
+        }
+        .progressFill {
+          height: 100%;
+          border-radius: inherit;
+          background: var(--td-brand-color);
+          transition: width 0.25s ease;
         }
       }
       .stateTag {

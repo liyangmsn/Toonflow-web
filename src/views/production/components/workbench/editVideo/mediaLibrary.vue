@@ -23,6 +23,19 @@
 
     <div class="mediaLibraryContent">
       <!-- 分镜视频 -->
+      <div v-if="activeTab === 'video'" class="quickImportBar jb ac">
+        <span class="quickImportTip">{{ $t("workbench.production.editVideo.oneClickImportTip") }}</span>
+        <t-button
+          theme="primary"
+          variant="outline"
+          size="small"
+          :loading="importing"
+          :disabled="importableItems.length === 0"
+          @click="handleImportAll">
+          <template #icon><i-lightning theme="outline" size="16" style="margin-right: 4px" /></template>
+          {{ importing ? $t("workbench.production.editVideo.importingToMainTrack") : $t("workbench.production.editVideo.oneClickImport") }}
+        </t-button>
+      </div>
       <div v-if="activeTab === 'video'" class="mediaList">
         <div
           v-for="item in videoItems"
@@ -215,6 +228,7 @@
 
 <script setup lang="ts">
 import { extractVideoThumbnails, extractAudioWaveform } from "vue-clip-track";
+import { importVideosToMainTrack } from "./utils/importToMainTrack";
 import {
   type MediaItem,
   type AudioItem,
@@ -242,6 +256,7 @@ const props = withDefaults(
 );
 
 const activeTab = ref("video");
+const importing = ref(false);
 
 const tabs = getLibraryTabs();
 
@@ -363,6 +378,31 @@ async function loadAudioWaveforms() {
   }
 }
 
+/** 一键带入的片段：存在选中版本时只带入选中的，否则带入全部 */
+const importableItems = computed(() => {
+  const usable = videoItems.value.filter((item) => item && item.url);
+  const selected = usable.filter((item) => item.selected);
+  return selected.length > 0 ? selected : usable;
+});
+
+// 一键带入：按列表顺序把分镜视频首尾相接地追加到主轨道
+async function handleImportAll() {
+  if (importing.value) return;
+  if (importableItems.value.length === 0) {
+    window.$message.warning($t("workbench.production.editVideo.noVideoToImport"));
+    return;
+  }
+  importing.value = true;
+  try {
+    const { count } = await importVideosToMainTrack(importableItems.value);
+    window.$message.success($t("workbench.production.editVideo.importedToMainTrack", { count }));
+  } catch (error: any) {
+    window.$message.error(error?.message || $t("workbench.production.editVideo.importToMainTrackFailed"));
+  } finally {
+    importing.value = false;
+  }
+}
+
 function handleDragStart(event: DragEvent, item: any) {
   if (!event.dataTransfer) return;
 
@@ -453,6 +493,18 @@ onMounted(() => {
     &::-webkit-scrollbar-thumb {
       background: var(--td-scrollbar-color);
       border-radius: 2px;
+    }
+
+    .quickImportBar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+
+      .quickImportTip {
+        font-size: 12px;
+        color: var(--td-text-color-placeholder);
+        line-height: 1.4;
+      }
     }
 
     // 媒体/图片列表

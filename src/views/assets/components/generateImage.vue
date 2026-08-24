@@ -70,6 +70,15 @@
         <t-card :title="$t('workbench.assets.gen.resultTitle')" :bordered="false" :style="{ width: '60%' }">
           <template #actions>
             <t-tag v-if="resultImages.length">{{ $t("workbench.assets.gen.generatedCount", { count: resultImages.length }) }}</t-tag>
+            <t-button size="small" variant="outline" :disabled="!resultImages.some((item) => item.id)" @click="selectAllGeneratedImages">
+              {{ $t("workbench.assets.gen.selectAll") }}
+            </t-button>
+            <t-button size="small" variant="outline" :disabled="!selectedResultIds.length" @click="clearResultSelection">
+              {{ $t("workbench.assets.gen.clearSelection") }}
+            </t-button>
+            <t-button size="small" theme="danger" :disabled="!selectedResultIds.length" @click="batchDeleteImages">
+              {{ $t("workbench.assets.gen.batchDelete", { count: selectedResultIds.length }) }}
+            </t-button>
           </template>
           <div class="resultImages" style="gap: 20px; flex-wrap: wrap">
             <div class="image f w">
@@ -81,6 +90,9 @@
                 @click="img.state === '已完成' ? selectImage(index) : null"
                 @mouseenter="hoveredImageIndex = index"
                 @mouseleave="hoveredImageIndex = null">
+                <div class="batchSelect" @click.stop>
+                  <t-checkbox :checked="selectedResultIds.includes(img.id)" :disabled="!img.id" @change="toggleResultSelection(img.id)" />
+                </div>
                 <div v-if="img.state === '生成中'" class="generating-overlay f ac jc">
                   <t-loading :text="$t('workbench.assets.gen.generatingLabel')" />
                 </div>
@@ -273,6 +285,54 @@ function handleCustomUpload(files: any[]): void {
 
 //生成结果
 const resultImages = ref<{ id: string; src: string; state: string; selected?: boolean }[]>([]);
+//批量选中的生成结果 id
+const selectedResultIds = ref<(string | number)[]>([]);
+
+function toggleResultSelection(id: string | number) {
+  const index = selectedResultIds.value.indexOf(id);
+  if (index === -1) selectedResultIds.value.push(id);
+  else selectedResultIds.value.splice(index, 1);
+}
+
+function selectAllGeneratedImages() {
+  selectedResultIds.value = resultImages.value.map((item) => item.id).filter(Boolean);
+}
+
+function clearResultSelection() {
+  selectedResultIds.value = [];
+}
+
+//批量删除生成结果
+function batchDeleteImages() {
+  const ids = selectedResultIds.value.filter(Boolean);
+  if (!ids.length) {
+    window.$message.warning($t("workbench.assets.gen.selectResultFirst"));
+    return;
+  }
+  const dialog = DialogPlugin.confirm({
+    header: $t("workbench.assets.gen.batchDeleteHeader"),
+    body: $t("workbench.assets.gen.batchDeleteBody", { count: ids.length }),
+    confirmBtn: $t("workbench.assets.deleteBtn"),
+    cancelBtn: $t("workbench.assets.cancelBtn"),
+    theme: "warning",
+    onConfirm: async () => {
+      try {
+        const results = await Promise.allSettled(ids.map((id) => axios.post("/assets/delImage", { id })));
+        const succeed = ids.filter((_, index) => results[index].status === "fulfilled");
+        const failed = ids.filter((_, index) => results[index].status !== "fulfilled");
+        resultImages.value = resultImages.value.filter((item) => !succeed.includes(item.id));
+        selectedResultIds.value = failed;
+        selectedImageIndex.value = null;
+        if (failed.length) window.$message.error($t("workbench.assets.gen.batchDeletePartFail"));
+        else window.$message.success($t("workbench.assets.gen.batchDeleteSuccess", { count: succeed.length }));
+      } catch (error: any) {
+        window.$message.error(error?.message || $t("workbench.assets.gen.batchDeleteFail"));
+      } finally {
+        dialog.destroy();
+      }
+    },
+  });
+}
 //预览图片
 const visible = ref(false);
 const trigger = ref();
@@ -292,6 +352,7 @@ watch(
       value2.value = "";
       selectedImageIndex.value = null;
       hoveredImageIndex.value = null;
+      selectedResultIds.value = [];
       generateLoading.value = false;
       fetchGeneratedImages();
     }
@@ -316,6 +377,7 @@ async function fetchGeneratedImages() {
     selected: item.selected ?? false,
   }));
   resultImages.value = images;
+  selectedResultIds.value = selectedResultIds.value.filter((id) => images.some((img: { id: string }) => img.id === id));
   const selectedIdx = images.findIndex((img: { selected?: boolean }) => img.selected);
   if (selectedIdx !== -1) {
     selectedImageIndex.value = selectedIdx;
@@ -351,6 +413,7 @@ function deleteImage(id: string | number, index: number) {
         axios.post("/assets/delImage", { id: id });
         window.$message.success($t("workbench.assets.deleteSuccess"));
         resultImages.value.splice(index, 1);
+        selectedResultIds.value = selectedResultIds.value.filter((item) => item !== id);
         if (selectedImageIndex.value === index) {
           selectedImageIndex.value = null;
         } else if (selectedImageIndex.value !== null && selectedImageIndex.value > index) {
@@ -442,6 +505,15 @@ async function onClick() {
             top: 10px;
             left: 10px;
             z-index: 10;
+          }
+          .batchSelect {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 10;
+            padding: 2px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.95);
           }
           .selected {
             position: absolute;

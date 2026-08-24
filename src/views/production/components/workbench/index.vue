@@ -153,6 +153,7 @@ function editFootage() {
             selected: item.videoId == subItem.id ? true : false,
           }));
         }
+        return [];
       });
       mockMediaItems.value = videoList.map((item: any) => ({
         id: `video-${item.id}`,

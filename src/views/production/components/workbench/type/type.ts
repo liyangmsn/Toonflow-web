@@ -26,7 +26,26 @@ interface UploadItemAssets extends UploadItemBase {
   sources: "assets";
 }
 
-type UploadItem = UploadItemStoryboard | UploadItemAssets;
+/** 来自其他轨道已生成片段视频的参考项 */
+interface UploadItemVideo extends UploadItemBase {
+  sources: "video";
+  index: number;
+  version?: number;
+}
+
+type UploadItem = UploadItemStoryboard | UploadItemAssets | UploadItemVideo;
+
+/** 可作为参考的片段视频（由 getGenerateData 返回） */
+interface ReferenceVideoItem {
+  id: number;
+  src: string;
+  fileType: "video";
+  sources: "video";
+  trackId: number;
+  trackIndex: number;
+  version: number;
+  time?: number;
+}
 
 interface StoryboardItem {
   src: string;
@@ -60,6 +79,10 @@ interface VideoItem {
   src: string;
   state: "未生成" | "生成中" | "已完成" | "生成失败";
   errorReason?: string | null;
+  /** 生成进度百分比（生成中由 ComfyUI 回传） */
+  percent?: number | null;
+  /** 生成阶段描述 */
+  stage?: string | null;
 }
 interface TrackMediaBase {
   src: string;
@@ -89,6 +112,10 @@ interface HistoryVideoItem {
   errorReason?: string | null;
   src: string;
   id: number;
+  /** 生成进度百分比（生成中由 ComfyUI 回传） */
+  percent?: number | null;
+  /** 生成阶段描述 */
+  stage?: string | null;
   duration?: number | string | null;
   projectId?: number | null;
   scriptId?: number | null;

@@ -343,6 +343,8 @@ function batchGenVideo() {
               id: videoRecordId[i.id],
               state: "生成中",
               src: "",
+              percent: 0,
+              stage: "准备生成",
             });
         });
         checkedTrackIds.value = [];

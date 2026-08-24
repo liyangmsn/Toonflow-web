@@ -2,7 +2,13 @@
   <div class="index fc">
     <div class="referenceImage">
       <div class="uploadBtn">
-        <imageSelect :mode="modelParmas.mode as VideoMode" v-model="imageList" :storyboard-list="storyboardList" />
+        <imageSelect
+          :mode="modelParmas.mode as VideoMode"
+          v-model="imageList"
+          :storyboard-list="storyboardList"
+          :reference-video-list="referenceVideoList"
+          :current-track-id="currentTrack?.id"
+          :refresh-reference-videos="refreshReferenceVideos" />
       </div>
     </div>
     <div class="modelSelect">
@@ -84,6 +90,7 @@ const modelParmas = ref<ModelSetting>({
 });
 
 const storyboardList = ref<StoryboardItem[]>([]); // 分镜列表
+const referenceVideoList = ref<ReferenceVideoItem[]>([]); // 可用作参考的片段视频
 
 /** 排序优先级：assets有图=0，storyboard有图=1，无图=2 */
 function getImageItemPriority(item: UploadItem): number {
@@ -268,6 +275,7 @@ async function getGenerateData() {
   });
 
   storyboardList.value = data.storyboardList;
+  referenceVideoList.value = data.referenceVideoList ?? [];
   // 优先使用本地缓存，没有缓存则用后端数据并写入缓存
   const pid = project.value?.id;
   const sid = episodesId.value;
@@ -289,6 +297,18 @@ async function getGenerateData() {
   }
 
   modelParmas.value.duration = clampDuration(data.trackList?.[activeTrackIndex.value]?.duration);
+}
+/** 仅刷新片段视频候选（打开片段选择弹窗前调用，避免重建整个轨道数据） */
+async function refreshReferenceVideos() {
+  try {
+    const { data } = await axios.post("/production/workbench/getGenerateData", {
+      projectId: project.value?.id,
+      scriptId: episodesId.value ?? 0,
+    });
+    referenceVideoList.value = data.referenceVideoList ?? [];
+  } catch (e) {
+    console.error("刷新片段视频列表失败:", e);
+  }
 }
 /** 提示词失焦时保存到后端 */
 function handlePromptBlur() {
@@ -424,6 +444,8 @@ async function generateVideo() {
           id: data,
           state: "生成中",
           src: "",
+          percent: 0,
+          stage: "准备生成",
         });
       } catch (e) {
         window.$message.error((e as any)?.message ?? "视频发起生成请求失败");
@@ -465,17 +487,28 @@ async function getVideoList() {
     videoIds: hasGenerateVideoIds.value,
   });
   if (data && data.length) {
-    data.forEach((item: { id: number; state: "生成中" | "未生成" | "已完成" | "生成失败"; src?: string; errorReason?: string }) => {
-      for (const track of trackList.value) {
-        const findData = track.videoList.find((i) => i.id == item.id);
-        if (findData) {
-          findData.state = item.state;
-          findData.src = item?.src ?? "";
-          findData.errorReason = item?.errorReason ?? "";
-          break;
+    data.forEach(
+      (item: {
+        id: number;
+        state: "生成中" | "未生成" | "已完成" | "生成失败";
+        src?: string;
+        errorReason?: string;
+        percent?: number;
+        stage?: string;
+      }) => {
+        for (const track of trackList.value) {
+          const findData = track.videoList.find((i) => i.id == item.id);
+          if (findData) {
+            findData.state = item.state;
+            findData.src = item?.src ?? "";
+            findData.errorReason = item?.errorReason ?? "";
+            findData.percent = item?.percent ?? findData.percent ?? 0;
+            findData.stage = item?.stage ?? findData.stage ?? "";
+            break;
+          }
         }
-      }
-    });
+      },
+    );
   }
 }
 function startPromptPoll() {

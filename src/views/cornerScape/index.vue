@@ -135,7 +135,9 @@
             }}{{ $t("workbench.cornerScape.descriptionSuffix") }}{{ item.describe }}
           </div>
           <div v-if="item.relepedAudio.length" style="margin-top: 6px">
-            <t-tag v-for="audio in item.relepedAudio" :key="audio.id" size="small" variant="outline" theme="primary">{{ audio.name }}</t-tag>
+            <t-tag v-for="audio in item.relepedAudio" :key="audio.id" size="small" variant="outline" theme="primary">
+              {{ audio.name + (audio.currentAudioName ? " · " + audio.currentAudioName : "") }}
+            </t-tag>
           </div>
         </div>
       </t-card>
@@ -271,7 +273,7 @@ interface DataItem {
   historyImages: Image[];
   errorReason: string;
   promptErrorReason: string;
-  relepedAudio: { id: number; name: string }[];
+  relepedAudio: { id: number; name: string; currentAudioName?: string }[];
   audioBindState: string;
 }
 
@@ -674,6 +676,8 @@ async function batchSelectBindAudio() {
       projectId: project.value?.id,
       assetsIds: items.map((item) => item.id),
       concurrentCount: otherSetting.value.assetsBatchGenereateSize,
+      // 人物音色按钮始终强制重新生成，避免已有音色时被跳过
+      force: true,
     });
   } catch (e: any) {
     window.$message.error(e.message ?? $t("workbench.cornerScape.msg.promptGenFail"));
