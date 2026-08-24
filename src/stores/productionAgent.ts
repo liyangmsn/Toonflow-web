@@ -193,23 +193,65 @@ function makeProductionAgentStore(projectId: string) {
             callback({ success: true, message: storyData });
           });
           s.on("addStoryboard", async (data, callback) => {
-            const insertVal = {
-              prompt: data.prompt || "",
-              duration: Number(data.duration) || 0,
-              track: data.track || "",
-              state: "未生成" as "未生成" | "生成中" | "已完成" | "生成失败",
-              src: null,
-              videoDesc: data.videoDesc,
-              shouldGenerateImage:
-                (typeof data.shouldGenerateImage == "boolean" && data.shouldGenerateImage) || String(data.shouldGenerateImage).toLowerCase() == "true"
-                  ? 1
-                  : 0,
-              associateAssetsIds: data.associateAssetsIds || [],
-            };
-            flowData.value.storyboard.push(insertVal);
-            await addStoryboardInfo([insertVal]);
-            throttledFn();
-            callback({ success: true, message: $t("storyboard.assets.derivativeAddSuccess") });
+            try {
+              const insertVal = createStoryboardValue(data);
+              flowData.value.storyboard.push(insertVal);
+              await addStoryboardInfo([insertVal]);
+              throttledFn();
+              callback({ success: true, message: $t("storyboard.assets.derivativeAddSuccess") });
+            } catch (e) {
+              callback({ success: false, message: (e as any)?.message || $t("storyboard.assets.addStoryboardFailed") });
+            }
+          });
+          s.on("upsertStoryboard", async (data, callback) => {
+            try {
+              if (data.id == null) {
+                const insertVal = createStoryboardValue(data);
+                flowData.value.storyboard.push(insertVal);
+                await addStoryboardInfo([insertVal]);
+              } else {
+                const target = flowData.value.storyboard.find((item) => item.id === data.id);
+                if (!target) return callback({ success: false, message: `未找到分镜面板 ${data.id}` });
+
+                await axios.post("/production/storyboard/updateStoryboard", {
+                  id: data.id,
+                  prompt: data.prompt ?? "",
+                  duration: Number(data.duration) || 0,
+                  videoDesc: data.videoDesc || "",
+                  track: data.track || "",
+                  shouldGenerateImage: parseShouldGenerateImage(data.shouldGenerateImage),
+                  associateAssetsIds: data.associateAssetsIds || [],
+                  scriptId: episodesId.value,
+                  projectId,
+                });
+
+                Object.assign(target, createStoryboardValue(data), {
+                  id: data.id,
+                  src: null,
+                  state: "未生成" as const,
+                  flowId: undefined,
+                });
+              }
+              throttledFn();
+              callback({ success: true, message: data.id == null ? "分镜新增成功" : "分镜替换成功" });
+            } catch (e) {
+              callback({ success: false, message: (e as any)?.message || "分镜面板操作失败" });
+            }
+          });
+          s.on("deleteStoryboard", async (data, callback) => {
+            try {
+              const index = flowData.value.storyboard.findIndex((item) => item.id === data.id);
+              if (index === -1) return callback({ success: false, message: `未找到分镜面板 ${data.id}` });
+              await axios.post("/production/storyboard/removeFrame", {
+                id: data.id,
+                projectId,
+              });
+              flowData.value.storyboard.splice(index, 1);
+              throttledFn();
+              callback({ success: true, message: "分镜删除成功" });
+            } catch (e) {
+              callback({ success: false, message: (e as any)?.message || "分镜面板删除失败" });
+            }
           });
         }
       },
@@ -457,16 +499,36 @@ function makeProductionAgentStore(projectId: string) {
         projectId: projectId,
       });
 
-      flowData.value.storyboard.forEach((item) => {
-        const updated = data.find((d: Storyboard) => d.prompt == item.prompt && d.duration == item.duration && d.videoDesc == item.videoDesc);
-        if (updated) {
-          item.id = updated.id;
-          item.trackId = updated.trackId;
-          item.src = updated.src;
-          item.state = updated.state;
-          item.associateAssetsIds = updated.associateAssetsIds;
-        }
-      });
+      const pendingItems = [...items];
+      for (const updated of data as Storyboard[]) {
+        const sourceIndex = pendingItems.findIndex(
+          (item) => item.prompt == updated.prompt && Number(item.duration) == Number(updated.duration) && item.videoDesc == updated.videoDesc,
+        );
+        if (sourceIndex === -1) continue;
+        const source = pendingItems.splice(sourceIndex, 1)[0];
+        source.id = updated.id;
+        source.trackId = updated.trackId;
+        source.src = updated.src;
+        source.state = updated.state;
+        source.associateAssetsIds = updated.associateAssetsIds;
+      }
+    }
+
+    function parseShouldGenerateImage(value: unknown) {
+      return (typeof value === "boolean" && value) || String(value).toLowerCase() === "true" ? 1 : 0;
+    }
+
+    function createStoryboardValue(data: any) {
+      return {
+        prompt: data.prompt || "",
+        duration: Number(data.duration) || 0,
+        track: data.track || "",
+        state: "未生成" as "未生成" | "生成中" | "已完成" | "生成失败",
+        src: null,
+        videoDesc: data.videoDesc || "",
+        shouldGenerateImage: parseShouldGenerateImage(data.shouldGenerateImage),
+        associateAssetsIds: data.associateAssetsIds || [],
+      };
     }
 
     const loadingHistory = ref(false);
