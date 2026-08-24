@@ -109,6 +109,9 @@
             <div class="tags">
               <t-tag theme="primary">{{ $t(getTypeLabel(item.type)) }}</t-tag>
               <t-tag v-if="item.type === 'text' && (item as any).think" variant="light">{{ $t("settings.vendor.think") }}</t-tag>
+              <template v-if="item.type === 'tts'">
+                <t-tag v-for="voice in item.voices || []" :key="voice.voice" variant="light">{{ voice.title }}</t-tag>
+              </template>
               <template v-for="(mode, mIdx) in (item as any).mode" :key="mIdx">
                 <t-tag v-if="!Array.isArray(mode)" variant="light">{{ getModeLabel(mode, item.type) }}</t-tag>
                 <t-tag v-else variant="light" v-for="(m, mmIdx) in mode" :key="mmIdx">
@@ -163,6 +166,32 @@
               <t-checkbox-group v-model="modelFormData.mode">
                 <t-checkbox v-for="opt in imageModeOptions" :key="opt.value" :value="opt.value">{{ $t(opt.label) }}</t-checkbox>
               </t-checkbox-group>
+            </t-form-item>
+          </template>
+
+          <template v-if="modelFormData.type === 'tts'">
+            <t-form-item name="workflowName" :label="$t('settings.vendor.workflowName')">
+              <t-input v-model="modelFormData.workflowName" :placeholder="$t('settings.vendor.workflowNamePlaceholder')" clearable />
+            </t-form-item>
+            <t-form-item name="voices" :label="$t('settings.vendor.voices')">
+              <div class="voiceEditor">
+                <div v-for="(voice, voiceIndex) in modelFormData.voices" :key="voiceIndex" class="voiceRow">
+                  <t-input v-model="voice.title" :placeholder="$t('settings.vendor.voiceTitlePlaceholder')" />
+                  <t-input v-model="voice.voice" :placeholder="$t('settings.vendor.voiceValuePlaceholder')" />
+                  <t-button
+                    variant="text"
+                    theme="danger"
+                    size="small"
+                    :disabled="modelFormData.voices.length === 1"
+                    @click="modelFormData.voices.splice(voiceIndex, 1)">
+                    <template #icon><i-delete theme="outline" /></template>
+                  </t-button>
+                </div>
+                <t-button variant="dashed" block @click="modelFormData.voices.push({ title: '', voice: '' })">
+                  <template #icon><i-plus theme="outline" /></template>
+                  {{ $t("settings.vendor.addVoice") }}
+                </t-button>
+              </div>
             </t-form-item>
           </template>
 
@@ -259,6 +288,13 @@
       :modelName="testingModel.modelName"
       :rawModes="(testingModel as any).mode || []" />
 
+    <!-- 音频模型测试弹窗 -->
+    <AudioModelTest
+      v-if="testingModel?.type === 'tts' && audioTestVisible"
+      v-model:modelVisible="audioTestVisible"
+      :vendorId="currentVendor!.id"
+      :modelName="testingModel.modelName" />
+
     <!-- 添加供应商弹窗 -->
     <t-dialog
       width="30vw"
@@ -350,6 +386,7 @@ import settingStore from "@/stores/setting";
 import TextModelTest from "./vendorTest/TextModelTest.vue";
 import ImageModelTest from "./vendorTest/ImageModelTest.vue";
 import VideoModelTest from "./vendorTest/VideoModelTest.vue";
+import AudioModelTest from "./vendorTest/AudioModelTest.vue";
 const { themeSetting } = storeToRefs(settingStore());
 
 // ── 类型 ──
@@ -383,7 +420,15 @@ interface VideoModel {
   durationResolutionMap: { duration: number[]; resolution: string[] }[];
 }
 
-type VendorModel = TextModel | ImageModel | VideoModel;
+interface TTSModel {
+  name: string;
+  modelName: string;
+  type: "tts";
+  workflowName?: string;
+  voices?: { title: string; voice: string }[];
+}
+
+type VendorModel = TextModel | ImageModel | VideoModel | TTSModel;
 
 interface VendorInput {
   key: string;
@@ -417,6 +462,7 @@ const TYPE_LABEL_MAP: Record<string, string> = {
   text: "settings.vendor.textModel",
   image: "settings.vendor.imageModel",
   video: "settings.vendor.videoModel",
+  tts: "settings.vendor.ttsModel",
 };
 
 const MODE_LABEL_MAP: Record<string, string> = {
@@ -458,6 +504,7 @@ const modelTypeOptions = [
   { value: "text", label: "settings.vendor.textModel" },
   { value: "image", label: "settings.vendor.imageModel" },
   { value: "video", label: "settings.vendor.videoModel" },
+  { value: "tts", label: "settings.vendor.ttsModel" },
 ];
 
 const imageModeOptions = [
@@ -543,6 +590,7 @@ const testingModel = ref<VendorModel | null>(null);
 const textTestVisible = ref(false);
 const imageTestVisible = ref(false);
 const videoTestVisible = ref(false);
+const audioTestVisible = ref(false);
 
 function getInputIcon(type: VendorInput["type"]) {
   if (type === "password") return "secured";
@@ -745,7 +793,9 @@ interface DrmRow {
 const modelFormData = ref({
   name: "",
   modelName: "",
-  type: "text" as "text" | "image" | "video",
+  type: "text" as "text" | "image" | "video" | "tts",
+  workflowName: "",
+  voices: [{ title: "", voice: "" }],
   think: false,
   mode: [] as string[],
   mixedMode: [] as string[], // referenceOptions 选中项，单独存放，构建时作为数组元素加入 mode
@@ -754,11 +804,13 @@ const modelFormData = ref({
   durationResolutionMap: [{ duration: [] as string[], resolution: [] as string[] }] as DrmRow[],
 });
 
-function resetModelForm(type: "text" | "image" | "video" = "text") {
+function resetModelForm(type: "text" | "image" | "video" | "tts" = "text") {
   modelFormData.value = {
     name: "",
     modelName: "",
     type,
+    workflowName: "",
+    voices: [{ title: "", voice: "" }],
     think: false,
     mode: [],
     mixedMode: [],
@@ -808,6 +860,23 @@ function buildModelFromForm(): VendorModel | null {
       modelName,
       type: "image",
       mode,
+    };
+  }
+
+  if (modelFormData.value.type === "tts") {
+    const voices = modelFormData.value.voices
+      .map((voice) => ({ title: voice.title.trim(), voice: voice.voice.trim() }))
+      .filter((voice) => voice.title || voice.voice);
+    if (voices.some((voice) => !voice.title || !voice.voice)) {
+      window.$message.error($t("settings.vendor.msg.fillVoicePair"));
+      return null;
+    }
+    return {
+      name,
+      modelName,
+      type: "tts",
+      workflowName: modelFormData.value.workflowName.trim() || undefined,
+      voices: voices.length ? voices : undefined,
     };
   }
 
@@ -919,6 +988,8 @@ function handleEditModel(model: VendorModel) {
       name: model.name,
       modelName: model.modelName,
       type: "text",
+      workflowName: "",
+      voices: [{ title: "", voice: "" }],
       think: model.think,
       mode: [],
       mixedMode: [],
@@ -933,6 +1004,8 @@ function handleEditModel(model: VendorModel) {
       name: model.name,
       modelName: model.modelName,
       type: "image",
+      workflowName: "",
+      voices: [{ title: "", voice: "" }],
       think: false,
       mode: [...model.mode],
       mixedMode: [],
@@ -971,12 +1044,30 @@ function handleEditModel(model: VendorModel) {
       name: model.name,
       modelName: model.modelName,
       type: "video",
+      workflowName: "",
+      voices: [{ title: "", voice: "" }],
       think: false,
       mode: mixedMode.length > 0 ? [...flatMode, "multiReference"] : flatMode,
       mixedMode,
       mixedModeCount,
       audio: model.audio,
       durationResolutionMap: rows,
+    };
+  }
+
+  if (model.type === "tts") {
+    modelFormData.value = {
+      name: model.name,
+      modelName: model.modelName,
+      type: "tts",
+      workflowName: model.workflowName || "",
+      voices: model.voices?.map((voice) => ({ title: voice.title, voice: voice.voice })) || [{ title: "", voice: "" }],
+      think: false,
+      mode: [],
+      mixedMode: [],
+      mixedModeCount: {},
+      audio: "optional",
+      durationResolutionMap: [{ duration: [], resolution: [] }],
     };
   }
 
@@ -991,6 +1082,8 @@ function handleTestModel(item: (typeof vendorModels.value)[number]) {
     imageTestVisible.value = true;
   } else if (item.type === "video") {
     videoTestVisible.value = true;
+  } else if (item.type === "tts") {
+    audioTestVisible.value = true;
   }
 }
 
@@ -1504,6 +1597,30 @@ function handleFileChange(e: Event) {
 
       .t-button {
         margin-top: 2px;
+        flex-shrink: 0;
+      }
+    }
+  }
+
+  .voiceEditor {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--td-component-border, #e5e5e5);
+    border-radius: 6px;
+    padding: 10px 12px;
+
+    .voiceRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .t-input {
+        flex: 1;
+      }
+
+      .t-button {
         flex-shrink: 0;
       }
     }

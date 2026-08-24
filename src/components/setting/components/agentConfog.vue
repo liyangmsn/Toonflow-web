@@ -88,7 +88,7 @@
       <div class="dialogContent">
         <t-form v-if="currentItem" label-align="top" :label-width="70">
           <t-form-item :label="$t('settings.agent.selectModel')">
-            <modelSelect v-model="selectValue" v-model:label="selectLabel" type="text" />
+            <modelSelect v-model="selectValue" v-model:label="selectLabel" :type="getModelSelectType(currentItem)" />
           </t-form-item>
           <t-form-item :label="$t('settings.agent.temperature')" v-if="type == '高级'">
             <t-input-number v-model="currentItem.temperature" style="width: 100%" />
@@ -164,6 +164,7 @@ const { isElectron } = storeToRefs(settingStore());
 
 interface ModelType {
   id: number;
+  key?: string;
   model: string;
   modelName: string;
   vendorId: number | null;
@@ -204,6 +205,10 @@ function getFallbackText(name: string) {
 }
 const type = ref("");
 const maxTokenMode = ref<"auto" | "manual">("auto");
+
+function getModelSelectType(item: ModelType | null): "text" | "tts" {
+  return item?.key === "ttsDubbing" ? "tts" : "text";
+}
 
 watch(maxTokenMode, (val) => {
   if (val === "auto" && currentItem.value) {

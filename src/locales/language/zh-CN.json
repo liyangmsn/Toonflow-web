@@ -34,7 +34,8 @@
       "type": {
         "image": "图像",
         "text": "文本",
-        "video": "视频"
+        "video": "视频",
+        "tts": "音频"
       },
       "msg": {
         "fetchModelFailed": "获取模型数据失败:"
@@ -117,6 +118,9 @@
         "textTitle": "文本对话测试",
         "imageTitle": "图像生成测试",
         "videoTitle": "视频生成测试",
+        "audioTitle": "音频生成测试",
+        "audioHint": "点击开始测试，系统将使用该供应商的默认音频参数生成一段测试音频。",
+        "openResult": "在新窗口打开",
         "textEmptyHint": "发送一条消息开始测试",
         "you": "你",
         "assistant": "助手",
@@ -188,6 +192,7 @@
       "textModel": "文本模型",
       "imageModel": "图像模型",
       "videoModel": "视频模型",
+      "ttsModel": "音频模型",
       "textToImage": "文生图",
       "textToVideo": "文生视频",
       "singleImage": "单图",
@@ -205,6 +210,12 @@
       "audioOptional": "可选",
       "audioOnly": "仅输出有声视频",
       "noAudio": "仅输出无声视频",
+      "workflowName": "工作流名称（可选）",
+      "workflowNamePlaceholder": "例如：tts_qwen3_voice_design",
+      "voices": "音色列表（可选）",
+      "voiceTitlePlaceholder": "音色显示名称",
+      "voiceValuePlaceholder": "音色标识",
+      "addVoice": "添加音色",
       "msg": {
         "getVendorListFailed": "获取供应商列表失败",
         "vendorConfigUpdated": "供应商配置已更新",
@@ -227,6 +238,7 @@
         "fillModelId": "请填写模型标识",
         "selectImageMode": "请选择图像模式",
         "selectVideoMode": "请选择视频模式",
+        "fillVoicePair": "请完整填写音色名称和音色标识",
         "groupPrefix": "第 {n} 组：",
         "addDuration": "请添加时长",
         "addResolution": "请添加分辨率",
@@ -239,6 +251,7 @@
         "testSuccess": "测试成功",
         "imageGenSuccess": "图像生成成功",
         "videoGenSuccess": "视频生成成功",
+        "audioGenSuccess": "音频生成成功",
         "requestFailed": "请求失败:",
         "deleteModelConfirm": "确认删除模型",
         "deleteModelBody": "删除后不可恢复，是否继续？",

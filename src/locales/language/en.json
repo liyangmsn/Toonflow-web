@@ -34,7 +34,8 @@
       "type": {
         "image": "Image",
         "text": "Text",
-        "video": "Video"
+        "video": "Video",
+        "tts": "Audio"
       },
       "msg": {
         "fetchModelFailed": "Failed to fetch model data:"
@@ -73,7 +74,14 @@
       "optionalSection": "Optional",
       "modelSettings": "Model Settings",
       "addManually": "Add Manually",
-      "test": "Test",
+      "test": {
+        "audioTitle": "Audio Generation Test",
+        "audioHint": "Click start to generate a test audio clip with the provider's default audio settings.",
+        "openResult": "Open in new window",
+        "result": "Result",
+        "startTest": "Start Test",
+        "cancel": "Cancel"
+      },
       "edit": "Edit",
       "delete": "Delete",
       "deleteVendor": "Delete Provider",
@@ -107,6 +115,7 @@
       "textModel": "Text Model",
       "imageModel": "Image Model",
       "videoModel": "Video Model",
+      "ttsModel": "Audio Model",
       "textToImage": "Text to Image",
       "textToVideo": "Text to Video",
       "singleImage": "Single Image",
@@ -124,6 +133,12 @@
       "audioOptional": "Optional",
       "audioOnly": "Audio Video Only",
       "noAudio": "Silent Video Only",
+      "workflowName": "Workflow Name (Optional)",
+      "workflowNamePlaceholder": "e.g., tts_qwen3_voice_design",
+      "voices": "Voices (Optional)",
+      "voiceTitlePlaceholder": "Voice display name",
+      "voiceValuePlaceholder": "Voice identifier",
+      "addVoice": "Add Voice",
       "msg": {
         "getVendorListFailed": "Failed to fetch provider list",
         "vendorConfigUpdated": "Provider config updated",
@@ -146,6 +161,7 @@
         "fillModelId": "Please enter a model ID",
         "selectImageMode": "Please select an image mode",
         "selectVideoMode": "Please select a video mode",
+        "fillVoicePair": "Please complete both the voice name and identifier",
         "groupPrefix": "Group {n}: ",
         "addDuration": "Please add a duration",
         "addResolution": "Please add a resolution",
@@ -158,6 +174,7 @@
         "testSuccess": "Test successful",
         "imageGenSuccess": "Image generated successfully",
         "videoGenSuccess": "Video generated successfully",
+        "audioGenSuccess": "Audio generated successfully",
         "requestFailed": "Request failed",
         "deleteModelConfirm": "Confirm Model Deletion",
         "deleteModelBody": "This action cannot be undone. Do you want to continue?",
