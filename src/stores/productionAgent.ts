@@ -184,6 +184,15 @@ function makeProductionAgentStore(projectId: string) {
             deriveAssetList.splice(index, 1);
             callback({ success: true, message: $t("storyboard.assets.derivativeDelSuccess") });
           });
+          s.on("unlinkDeriveAsset", async (data, callback) => {
+            const assets = flowData.value.assets.find((a) => a.id === data.assetsId);
+            if (!assets) return callback({ success: false, message: $t("storyboard.assets.notExist") });
+            const deriveAssetList = assets.derive || [];
+            const index = deriveAssetList.findIndex((d) => d.id === data.id);
+            if (index === -1) return callback({ success: false, message: $t("storyboard.assets.notDerivativeExist") });
+            deriveAssetList.splice(index, 1);
+            callback({ success: true, message: $t("storyboard.assets.derivativeDelSuccess") });
+          });
           s.on("generateDeriveAsset", async (data, callback) => {
             const assetsData = await batchGenerateAssets(data.ids);
             callback({ success: true, message: assetsData });
