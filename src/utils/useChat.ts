@@ -209,31 +209,35 @@ export function useChat(options: UseChatOptions) {
     return children;
   };
 
-  const parseXmlTag = (text: string, tag: string) => {
+  const parseXmlTags = (text: string, tag: string) => {
     const escapedTag = escapeRegExp(tag);
     // Match opening tag with optional attributes: <tag> or <tag attr="val">
     const openRegex = new RegExp(`<${escapedTag}(\\s[^>]*)?>`, "g");
-    let lastMatch: RegExpExecArray | null = null;
-    let m: RegExpExecArray | null;
-    while ((m = openRegex.exec(text)) !== null) {
-      lastMatch = m;
+    const parsedTags: {
+      value: string;
+      attrs: Record<string, string>;
+      children: XmlChildItem[];
+      isComplete: boolean;
+    }[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = openRegex.exec(text)) !== null) {
+      const attrs = parseXmlAttributes(match[1] ?? "");
+      const contentStart = match.index + match[0].length;
+      const closeTag = `</${tag}>`;
+      const closeIndex = text.indexOf(closeTag, contentStart);
+      const isComplete = closeIndex !== -1;
+      const value = text.slice(contentStart, isComplete ? closeIndex : text.length).trim();
+
+      parsedTags.push({
+        value,
+        attrs,
+        children: parseXmlChildren(value),
+        isComplete,
+      });
     }
-    if (!lastMatch) return null;
 
-    const attrs = parseXmlAttributes(lastMatch[1] ?? "");
-    const contentStart = lastMatch.index + lastMatch[0].length;
-    const closeTag = `</${tag}>`;
-    const closeIndex = text.indexOf(closeTag, contentStart);
-    const isComplete = closeIndex !== -1;
-    const value = text.slice(contentStart, isComplete ? closeIndex : text.length).trim();
-    const children = parseXmlChildren(value);
-
-    return {
-      value,
-      attrs,
-      children,
-      isComplete,
-    };
+    return parsedTags;
   };
 
   const stripXmlFromMessage = (text: string) => {
@@ -276,30 +280,30 @@ export function useChat(options: UseChatOptions) {
     let changed = false;
 
     for (const tag of normalizedXmlTags) {
-      const parsed = parseXmlTag(rawText, tag);
-      if (parsed === null) continue;
+      const parsedTags = parseXmlTags(rawText, tag);
+      for (const parsed of parsedTags) {
+        const { value, isComplete } = parsed;
+        const eventStatus = isComplete ? (status === "error" || status === "stop" ? status : "complete") : status;
 
-      const { value, isComplete } = parsed;
-      const eventStatus = isComplete ? (status === "error" || status === "stop" ? status : "complete") : status;
+        const shouldEmit = prevState[tag] !== value || eventStatus === "complete";
+        if (!shouldEmit) continue;
 
-      const shouldEmit = prevState[tag] !== value || eventStatus === "complete";
-      if (!shouldEmit) continue;
+        nextState[tag] = value;
+        nextMessageData[tag] = value;
+        xmlData.value = { ...xmlData.value, [tag]: value };
+        changed = true;
 
-      nextState[tag] = value;
-      nextMessageData[tag] = value;
-      xmlData.value = { ...xmlData.value, [tag]: value };
-      changed = true;
-
-      onXmlTag?.({
-        messageId,
-        contentId: content.id,
-        type: content.type,
-        tag,
-        value,
-        attrs: parsed.attrs,
-        children: parsed.children,
-        status: eventStatus,
-      });
+        onXmlTag?.({
+          messageId,
+          contentId: content.id,
+          type: content.type,
+          tag,
+          value,
+          attrs: parsed.attrs,
+          children: parsed.children,
+          status: eventStatus,
+        });
+      }
     }
 
     if (!changed) return;
