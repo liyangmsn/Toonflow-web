@@ -1,3 +1,7 @@
+const envBaseUrl = String(import.meta.env.VITE_BASE_URL || "").trim();
+const isLegacyLocalhostUrl = (url: unknown) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/api)?\/?$/i.test(String(url || "").trim());
+
 export default defineStore(
   "setting",
   () => {
@@ -6,7 +10,7 @@ export default defineStore(
     const canvasWheelEvent = ref("zoom");
     const activeMenu = ref("ui");
 
-    const baseUrl = ref<string>(import.meta.env.VITE_BASE_URL || "http://localhost:10588/api");
+    const baseUrl = ref<string>(envBaseUrl || "http://localhost:10588/api");
 
     const needUpdate = ref(false);
 
@@ -32,5 +36,14 @@ export default defineStore(
 
     return { showSetting, baseUrl, otherSetting, themeSetting, language, activeMenu, isElectron, canvasWheelEvent, needUpdate };
   },
-  { persist: { pick: ["baseUrl", "otherSetting", "themeSetting", "language"] } },
+  {
+    persist: {
+      pick: ["baseUrl", "otherSetting", "themeSetting", "language"],
+      afterHydrate: ({ store }) => {
+        if (envBaseUrl && isLegacyLocalhostUrl(store.baseUrl)) {
+          store.baseUrl = envBaseUrl;
+        }
+      },
+    },
+  },
 );
