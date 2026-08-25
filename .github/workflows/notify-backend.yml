@@ -1,0 +1,32 @@
+name: Trigger Toonflow backend deployment
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Toonflow-app repository dispatch
+        env:
+          DISPATCH_TOKEN: ${{ secrets.TOONFLOW_APP_DISPATCH_TOKEN }}
+          FRONTEND_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "TOONFLOW_APP_DISPATCH_TOKEN is not configured; skipping backend dispatch."
+            exit 0
+          fi
+          curl --fail-with-body --request POST \
+            --url https://api.github.com/repos/liyangmsn/Toonflow-app/dispatches \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $DISPATCH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data "{\"event_type\":\"frontend-updated\",\"client_payload\":{\"frontend_ref\":\"master\",\"frontend_sha\":\"$FRONTEND_SHA\"}}"
