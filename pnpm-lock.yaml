@@ -153,9 +153,6 @@ importers:
       vite:
         specifier: ^5.4.10
         version: 5.4.10(@types/node@22.20.1)(sass@1.103.1)
-      vite-plugin-singlefile:
-        specifier: ^2.3.0
-        version: 2.3.3(rollup@4.62.5)(vite@5.4.10(@types/node@22.20.1)(sass@1.103.1))
       vue-tsc:
         specifier: ^2.1.10
         version: 2.1.10(typescript@5.6.3)
@@ -1902,10 +1899,6 @@ packages:
   mermaid@11.17.0:
     resolution: {integrity: sha512-Jo9N377Wb4MSnHFPTbLi2SxFpsQl4eVHoxnW5U1Md9EazvgMp3s+4ohDxr81YNTgbn5Kj7HJ3yslrSJ52kwpbA==}
 
-  micromatch@4.0.8:
-    resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
-    engines: {node: '>=8.6'}
-
   mime-db@1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
     engines: {node: '>= 0.6'}
@@ -2466,16 +2459,6 @@ packages:
   validator@13.15.35:
     resolution: {integrity: sha512-TQ5pAGhd5whStmqWvYF4OjQROlmv9SMFVt37qoCBdqRffuuklWYQlCNnEs2ZaIBD1kZRNnikiZOS1eqgkar0iw==}
     engines: {node: '>= 0.10'}
-
-  vite-plugin-singlefile@2.3.3:
-    resolution: {integrity: sha512-XVnGH0QzbOa8fxRSsHdCarVN1BSBXNi7uLMQYlrGRN5apdHkk62XQWRJhVever0lnfuyBkwn+kvVChdm/OoOUg==}
-    engines: {node: '>18.0.0'}
-    peerDependencies:
-      rollup: ^4.59.0
-      vite: ^5.4.21 || ^6.0.0 || ^7.0.0 || ^8.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
 
   vite@5.4.10:
     resolution: {integrity: sha512-1hvaPshuPUtxeQ0hsVH3Mud0ZanOLwVTneA1EgbAM5LhaZEqyPWGRQ7BtaMvUrTDeEaC8pxtj6a6jku3x4z6SQ==}
@@ -4719,11 +4702,6 @@ snapshots:
       uuid: 13.0.2
     optional: true
 
-  micromatch@4.0.8:
-    dependencies:
-      braces: 3.0.3
-      picomatch: 2.3.2
-
   mime-db@1.52.0: {}
 
   mime-types@2.1.35:
@@ -5333,13 +5311,6 @@ snapshots:
   uuid@13.0.2: {}
 
   validator@13.15.35: {}
-
-  vite-plugin-singlefile@2.3.3(rollup@4.62.5)(vite@5.4.10(@types/node@22.20.1)(sass@1.103.1)):
-    dependencies:
-      micromatch: 4.0.8
-      vite: 5.4.10(@types/node@22.20.1)(sass@1.103.1)
-    optionalDependencies:
-      rollup: 4.62.5
 
   vite@5.4.10(@types/node@22.20.1)(sass@1.103.1):
     dependencies:
