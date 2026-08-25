@@ -43,11 +43,10 @@
             </div>
           </div>
           <!-- 无选中视频时展示参考素材缩略图 -->
-          <div class="thumbGroup" v-else-if="track.medias.some((m) => m.src || m.fileType === 'image')">
+          <div class="thumbGroup" v-else-if="track.medias.some((m) => m.src)">
             <template v-for="(m, i) in track.medias" :key="i">
-              <template v-if="m.src || m.fileType === 'image'">
-                <t-image fit="cover" v-if="m.fileType === 'image' && m.src" :src="m.src" class="thumb" />
-                <div v-else-if="m.fileType === 'image'" class="thumb placeholder missingImageThumb"></div>
+              <template v-if="m.src">
+                <t-image fit="cover" v-if="m.fileType === 'image'" :src="m.src" class="thumb" />
                 <div v-else class="thumb placeholder c">
                   <i-volume-notice v-if="m.fileType === 'audio'" size="20" />
                   <i-video v-else size="24" />
@@ -286,20 +285,19 @@ function batchGenText() {
  * 获取指定轨道的上传数据：
  * 当前活动轨道 → uploadBox（含未保存的最新编辑）
  * 其他轨道 → uploadBoxCache（含切换前的编辑）→ 降级 track.medias
- * 只保留具有关联 ID 的项，图片是否生成不影响引用关系。
+ * @param filterEmpty 是否过滤掉没有 src 的项（生成视频时需要过滤，生成提示词时不需要）
  */
-function getTrackUploadInfo(track: TrackItem) {
+function getTrackUploadInfo(track: TrackItem, filterEmpty = false) {
   const activeTrackId = trackList.value[activeTrackIndex.value]?.id;
 
   if (track.id === activeTrackId) {
     const items = props.imageList as UploadItem[];
-    return items
-      .filter((item) => typeof item.id === "number" && !Number.isNaN(item.id))
-      .map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
+    return (filterEmpty ? items.filter((item) => Boolean(item.src)) : items).map(({ id, sources }) => ({
+      id,
+      sources: (sources ?? "storyboard") as string,
+    }));
   }
-  return track.medias
-    .filter((m) => typeof m.id === "number" && !Number.isNaN(m.id))
-    .map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
+  return track.medias.filter((m) => !filterEmpty || Boolean(m.src)).map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
 }
 const generateVideoLoad = ref(false);
 /** 批量为已勾选轨道生成视频 */
@@ -316,7 +314,7 @@ function batchGenVideo() {
 
       const trackData = checkedTrackData.map((track) => {
         const trackId = track.id;
-        const uploadData = props.modelParmas.mode === "text" ? [] : getTrackUploadInfo(track);
+        const uploadData = props.modelParmas.mode === "text" ? [] : getTrackUploadInfo(track, true);
         return {
           duration: props.clampDuration(track.duration || props.modelParmas.duration),
           prompt: track.prompt,
@@ -466,7 +464,6 @@ watch(
           min-width: 0;
           height: 100%;
           object-fit: cover;
-          background: var(--td-bg-color-secondarycontainer);
         }
         .placeholder {
           background: var(--td-bg-color-secondarycontainer);

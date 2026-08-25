@@ -263,10 +263,12 @@ const references = computed(() => {
     return "image";
   }
 
-  return imageList.value.map((item) => ({
-    type: getFileTypeByExt(item.src) as "image" | "video" | "audio" | "text",
-    src: item.src ?? "",
-  }));
+  return imageList.value
+    .filter((item) => item.src)
+    .map((item) => ({
+      type: getFileTypeByExt(item.src) as "image" | "video" | "audio" | "text",
+      src: item.src ?? "",
+    }));
 });
 
 async function getGenerateData() {
@@ -452,7 +454,7 @@ async function generateVideo() {
                       ? imageList.value.slice(0, 1)
                       : imageList.value;
                   const filtered = preSliced
-                    .filter((item) => typeof item.id === "number" && !isNaN(item.id))
+                    .filter((item) => Boolean(item.src) && typeof item.id === "number" && !isNaN(item.id))
                     .map(({ id, sources }) => ({ id, sources }));
                   if (frameMode.includes(modelParmas.value.mode)) return filtered.slice(0, 2);
                   if (modelParmas.value.mode === "singleImage") return filtered.slice(0, 1);
