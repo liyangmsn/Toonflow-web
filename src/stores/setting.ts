@@ -6,7 +6,7 @@ export default defineStore(
     const canvasWheelEvent = ref("zoom");
     const activeMenu = ref("ui");
 
-    const baseUrl = ref<string>("http://localhost:10588/api");
+    const baseUrl = ref<string>(import.meta.env.VITE_BASE_URL || "http://localhost:10588/api");
 
     const needUpdate = ref(false);
 
