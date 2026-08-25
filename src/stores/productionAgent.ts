@@ -237,7 +237,6 @@ function makeProductionAgentStore(projectId: string) {
                 Object.assign(target, createStoryboardValue(data), {
                   id: data.id,
                   src: null,
-                  state: "未生成" as const,
                   flowId: undefined,
                 });
               }
@@ -246,6 +245,28 @@ function makeProductionAgentStore(projectId: string) {
             } catch (e) {
               callback({ success: false, message: (e as any)?.message || "分镜面板操作失败" });
             }
+          });
+          s.on("storyboardPromptGenerating", (data) => {
+            if (data?.id == null) return;
+            const target = flowData.value.storyboard.find((item) => item.id === data.id);
+            if (!target) return;
+            target.state = "生成中";
+          });
+          s.on("storyboardPromptFailed", (data) => {
+            if (data?.id == null) return;
+            const target = flowData.value.storyboard.find((item) => item.id === data.id);
+            if (!target) return;
+            target.state = "生成失败";
+            target.reason = data.reason || "分镜提示词生成失败";
+          });
+          s.on("storyboardPromptUpdated", (data) => {
+            if (data?.id == null) return;
+            const target = flowData.value.storyboard.find((item) => item.id === data.id);
+            if (!target) return;
+            target.prompt = data.prompt || "";
+            target.shouldGenerateImage = parseShouldGenerateImage(data.shouldGenerateImage);
+            target.state = "未生成";
+            throttledFn();
           });
           s.on("deleteStoryboard", async (data, callback) => {
             try {
