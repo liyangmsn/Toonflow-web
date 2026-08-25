@@ -5,6 +5,7 @@ type VideoMode = "singleImage" | "startEndRequired" | "endFrameOptional" | "star
 interface UploadItemBase {
   fileType: "image" | "video" | "audio";
   id: number | null;
+  name?: string;
   src?: string;
   prompt?: string;
 }
@@ -87,6 +88,7 @@ interface VideoItem {
 interface TrackMediaBase {
   src: string;
   id?: number;
+  name?: string;
   prompt?: string;
   fileType: "image" | "video" | "audio";
   slotType?: Type; // 本地保存时记录的 slot 类型，用于切换轨道时精确还原位置

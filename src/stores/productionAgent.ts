@@ -151,6 +151,13 @@ function makeProductionAgentStore(projectId: string) {
             });
             callback(returnData);
           });
+          s.on("storyboardOrderUpdated", (data) => {
+            const orderedIds = Array.isArray(data?.orderedIds) ? data.orderedIds : [];
+            if (!orderedIds.length) return;
+            const orderMap = new Map<number, number>(orderedIds.map((id: number, index: number) => [id, index]));
+            flowData.value.storyboard.sort((a, b) => (orderMap.get(a.id ?? -1) ?? Number.MAX_SAFE_INTEGER) - (orderMap.get(b.id ?? -1) ?? Number.MAX_SAFE_INTEGER));
+            throttledFn();
+          });
           s.on("addDeriveAsset", async (data, callback) => {
             const assets = flowData.value.assets.find((a) => a.id === data.assetsId);
             if (!assets) return callback({ success: false, message: $t("storyboard.assets.notExist") });
@@ -216,7 +223,17 @@ function makeProductionAgentStore(projectId: string) {
             try {
               if (data.id == null) {
                 const insertVal = createStoryboardValue(data);
-                flowData.value.storyboard.push(insertVal);
+                let insertIndex = flowData.value.storyboard.length;
+                if (data.insertAfterId != null) {
+                  const targetIndex = flowData.value.storyboard.findIndex((item) => item.id === data.insertAfterId);
+                  if (targetIndex === -1) return callback({ success: false, message: `未找到插入位置面板 ${data.insertAfterId}` });
+                  insertIndex = targetIndex + 1;
+                } else if (data.insertBeforeId != null) {
+                  const targetIndex = flowData.value.storyboard.findIndex((item) => item.id === data.insertBeforeId);
+                  if (targetIndex === -1) return callback({ success: false, message: `未找到插入位置面板 ${data.insertBeforeId}` });
+                  insertIndex = targetIndex;
+                }
+                flowData.value.storyboard.splice(insertIndex, 0, insertVal);
                 await addStoryboardInfo([insertVal]);
               } else {
                 const target = flowData.value.storyboard.find((item) => item.id === data.id);

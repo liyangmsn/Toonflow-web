@@ -387,16 +387,24 @@ function handlePaste(e: ClipboardEvent) {
 .textareaWrapper {
   width: 100%;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   position: relative;
+  display: flex;
+  overflow: hidden;
 }
 .promptEditor {
   width: 100%;
-  height: 100%;
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
   box-sizing: border-box;
   border: none;
   outline: none;
   padding: 10px;
   overflow-y: auto;
+  overflow-x: hidden;
   font-size: 13px;
   line-height: 1.6;
   color: var(--td-text-color-primary);

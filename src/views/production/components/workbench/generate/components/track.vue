@@ -285,19 +285,20 @@ function batchGenText() {
  * 获取指定轨道的上传数据：
  * 当前活动轨道 → uploadBox（含未保存的最新编辑）
  * 其他轨道 → uploadBoxCache（含切换前的编辑）→ 降级 track.medias
- * @param filterEmpty 是否过滤掉没有 src 的项（生成视频时需要过滤，生成提示词时不需要）
+ * 只保留具有关联 ID 的项，图片是否生成不影响引用关系。
  */
-function getTrackUploadInfo(track: TrackItem, filterEmpty = false) {
+function getTrackUploadInfo(track: TrackItem) {
   const activeTrackId = trackList.value[activeTrackIndex.value]?.id;
 
   if (track.id === activeTrackId) {
     const items = props.imageList as UploadItem[];
-    return (filterEmpty ? items.filter((item) => Boolean(item.src)) : items).map(({ id, sources }) => ({
-      id,
-      sources: (sources ?? "storyboard") as string,
-    }));
+    return items
+      .filter((item) => typeof item.id === "number" && !Number.isNaN(item.id))
+      .map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
   }
-  return track.medias.filter((m) => !filterEmpty || Boolean(m.src)).map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
+  return track.medias
+    .filter((m) => typeof m.id === "number" && !Number.isNaN(m.id))
+    .map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
 }
 const generateVideoLoad = ref(false);
 /** 批量为已勾选轨道生成视频 */
@@ -314,7 +315,7 @@ function batchGenVideo() {
 
       const trackData = checkedTrackData.map((track) => {
         const trackId = track.id;
-        const uploadData = props.modelParmas.mode === "text" ? [] : getTrackUploadInfo(track, true);
+        const uploadData = props.modelParmas.mode === "text" ? [] : getTrackUploadInfo(track);
         return {
           duration: props.clampDuration(track.duration || props.modelParmas.duration),
           prompt: track.prompt,

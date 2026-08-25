@@ -218,6 +218,29 @@ export default defineStore(
     }
 
     /**
+     * 仅调整缓存中 storyboard 素材的顺序，保留用户手动选择的其他资产和空槽位。
+     * AI 调整分镜或轨道片段顺序后，避免旧缓存覆盖后端的新顺序。
+     */
+    function reorderStoryboardItems(projectId: CacheKey, scriptId: CacheKey, orderedIds: number[]): void {
+      const scriptCache = cacheData.value[projectId]?.[scriptId];
+      if (!scriptCache || !orderedIds.length) return;
+      const orderMap = new Map<number, number>(orderedIds.map((id, index) => [id, index]));
+      Object.values(scriptCache).forEach((items) => {
+        const storyboardPositions: number[] = [];
+        const storyboardItems: CachedUploadItem[] = [];
+        items.forEach((item, index) => {
+          if ((item as any).sources !== "storyboard" || item.id == null || !orderMap.has(item.id)) return;
+          storyboardPositions.push(index);
+          storyboardItems.push(item);
+        });
+        storyboardItems.sort((a, b) => (orderMap.get(a.id!) ?? Number.MAX_SAFE_INTEGER) - (orderMap.get(b.id!) ?? Number.MAX_SAFE_INTEGER));
+        storyboardPositions.forEach((position, index) => {
+          items[position] = storyboardItems[index];
+        });
+      });
+    }
+
+    /**
      * 清空指定 project / script 下的所有轨道缓存
      */
     function clearScriptCache(projectId: CacheKey, scriptId: CacheKey): void {
@@ -297,6 +320,7 @@ export default defineStore(
       setCache,
       removeCache,
       removeImageById,
+      reorderStoryboardItems,
       clearScriptCache,
       initCacheFromTrackList,
       forceInitCacheFromTrackList,

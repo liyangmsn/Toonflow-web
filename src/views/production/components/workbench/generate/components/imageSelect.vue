@@ -4,13 +4,15 @@
     <template v-if="mode == 'singleImage' || Array.isArray(parseMode(mode as string))">
       <div class="uploadBtn c fc" v-for="(item, index) in mode == 'singleImage' ? imageList.slice(0, 1) : imageList" :key="index">
         <template v-if="item.src">
-          <t-image v-if="item.fileType == 'image'" :src="item.src" fit="contain" class="uploadPreview">
-            <template #overlayContent>
-              <div class="imageToolsWrap">
-                <ImageTools :src="item.src!" position="br" />
-              </div>
-            </template>
-          </t-image>
+          <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
+            <t-image :src="item.src" fit="contain" class="uploadPreview">
+              <template #overlayContent>
+                <div class="imageToolsWrap">
+                  <ImageTools :src="item.src!" position="br" />
+                </div>
+              </template>
+            </t-image>
+          </t-tooltip>
           <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item?.prompt || ''">
             <div class="mediaPreview audioPreview">
               <i-acoustic size="20" />
@@ -43,13 +45,15 @@
       <div class="uploadBtn c fc" v-for="(item, index) in buildLabel" :key="item.value" @click="handleMixedAdd(item.value as 'start' | 'end')">
         <div v-if="!isEmptySlot(imageList?.[index])" style="flex: 1; width: 100%" class="ac">
           <template v-if="imageList?.[index]?.src">
-            <t-image v-if="imageList?.[index]?.fileType == 'image'" :src="imageList?.[index]!.src" fit="contain" class="uploadPreview">
-              <template #overlayContent>
-                <div class="imageToolsWrap">
-                  <ImageTools :src="imageList?.[index]!.src" position="br" />
-                </div>
-              </template>
-            </t-image>
+            <t-tooltip v-if="imageList?.[index]?.fileType == 'image'" theme="primary" :content="imageList?.[index]?.name || ''">
+              <t-image :src="imageList?.[index]!.src" fit="contain" class="uploadPreview">
+                <template #overlayContent>
+                  <div class="imageToolsWrap">
+                    <ImageTools :src="imageList?.[index]!.src" position="br" />
+                  </div>
+                </template>
+              </t-image>
+            </t-tooltip>
             <div v-else-if="imageList?.[index]?.fileType == 'audio'" class="mediaPreview audioPreview">
               <i-acoustic size="20" />
               <span class="mediaLabel">音频</span>
@@ -307,6 +311,7 @@ async function pickFromAssets() {
           sources: "assets",
           src: sub.src,
           id: sub.id,
+          name: sub.name,
           prompt: sub.prompt,
         } as UploadItem;
       });
@@ -318,6 +323,7 @@ async function pickFromAssets() {
         sources: "assets",
         src: asset.src,
         id: asset.id,
+        name: asset.name,
         prompt: asset.prompt,
       } as UploadItem,
     ];

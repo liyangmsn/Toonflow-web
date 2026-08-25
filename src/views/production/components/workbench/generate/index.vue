@@ -60,14 +60,17 @@ import videoCard from "./components/video.vue";
 import "@/views/production/components/workbench/type/type";
 import axios from "@/utils/axios";
 import projectStore from "@/stores/project";
+import productionAgentStore from "@/stores/productionAgent";
 import promptEditor from "@/components/promptEditor.vue";
 import imageListCacheStore from "@/stores/imageListCache";
 
 const { project } = storeToRefs(projectStore());
+const productionAgent = productionAgentStore();
+const { socket: productionAgentSocket } = storeToRefs(productionAgent);
 const episodesId = inject<Ref<number>>("episodesId")!;
 const activeTrackIndex = ref(0);
 const cacheStore = imageListCacheStore();
-const { getCache, setCache, removeCache, initCacheFromTrackList, warmUpUrls } = cacheStore;
+const { getCache, setCache, removeCache, initCacheFromTrackList, warmUpUrls, reorderStoryboardItems } = cacheStore;
 const { urlMap } = storeToRefs(cacheStore);
 
 const modeOptions = ref<VideoModel>({
@@ -260,9 +263,7 @@ const references = computed(() => {
     return "image";
   }
 
-  return imageList.value
-    .filter((item) => item.src)
-    .map((item) => ({
+  return imageList.value.map((item) => ({
       type: getFileTypeByExt(item.src) as "image" | "video" | "audio" | "text",
       src: item.src ?? "",
     }));
@@ -298,6 +299,32 @@ async function getGenerateData() {
 
   modelParmas.value.duration = clampDuration(data.trackList?.[activeTrackIndex.value]?.duration);
 }
+
+function handleProductionOrderUpdated(data?: { orderedIds?: number[]; orderedStoryboardIds?: number[] }) {
+  const orderedIds = data?.orderedIds ?? data?.orderedStoryboardIds;
+  if (project.value?.id != null && episodesId.value != null && orderedIds?.length) {
+    reorderStoryboardItems(project.value.id, episodesId.value, orderedIds);
+  }
+  void getGenerateData();
+}
+
+watch(
+  productionAgentSocket,
+  (socket, previousSocket) => {
+    previousSocket?.off("storyboardOrderUpdated", handleProductionOrderUpdated);
+    previousSocket?.off("workbenchOrderUpdated", handleProductionOrderUpdated);
+    if (!socket) return;
+    socket.on("storyboardOrderUpdated", handleProductionOrderUpdated);
+    socket.on("workbenchOrderUpdated", handleProductionOrderUpdated);
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  productionAgentSocket.value?.off("storyboardOrderUpdated", handleProductionOrderUpdated);
+  productionAgentSocket.value?.off("workbenchOrderUpdated", handleProductionOrderUpdated);
+});
+
 /** 仅刷新片段视频候选（打开片段选择弹窗前调用，避免重建整个轨道数据） */
 async function refreshReferenceVideos() {
   try {
@@ -425,7 +452,7 @@ async function generateVideo() {
                       ? imageList.value.slice(0, 1)
                       : imageList.value;
                   const filtered = preSliced
-                    .filter((item) => Boolean(item.src) && typeof item.id === "number" && !isNaN(item.id))
+                    .filter((item) => typeof item.id === "number" && !isNaN(item.id))
                     .map(({ id, sources }) => ({ id, sources }));
                   if (frameMode.includes(modelParmas.value.mode)) return filtered.slice(0, 2);
                   if (modelParmas.value.mode === "singleImage") return filtered.slice(0, 1);
@@ -607,9 +634,12 @@ onUnmounted(() => {
           display: flex;
           flex-direction: column;
           .promptInput {
-            flex: 1;
+            flex: 1 1 auto;
+            height: 0;
             min-height: 0;
-            overflow-y: auto;
+            min-width: 0;
+            display: flex;
+            overflow: hidden;
           }
         }
       }
