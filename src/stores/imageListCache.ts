@@ -255,15 +255,29 @@ export default defineStore(
     }
     /**
      * 从后端返回的 trackList 批量初始化缓存
-     * 只有当对应轨道没有缓存时才写入（保留用户本地编辑）
+     * 已有缓存时保留本地编辑，同时补入后端新返回的关联项。
+     * 分镜生成后可能新增仍未生成图片的资产，这些项也必须进入缓存。
      */
     function initCacheFromTrackList(projectId: CacheKey, scriptId: CacheKey, trackList: TrackItem[]): void {
       trackList.forEach((track) => {
         if (track.id == null) return;
-        if (cacheData.value[projectId]?.[scriptId]?.[track.id]) return;
         if (!cacheData.value[projectId]) cacheData.value[projectId] = {};
         if (!cacheData.value[projectId][scriptId]) cacheData.value[projectId][scriptId] = {};
-        cacheData.value[projectId][scriptId][track.id] = toCachedItems(track.medias);
+        const cachedItems = cacheData.value[projectId][scriptId][track.id];
+        if (!cachedItems) {
+          cacheData.value[projectId][scriptId][track.id] = toCachedItems(track.medias);
+          return;
+        }
+
+        const cachedKeys = new Set(cachedItems.map((item) => makeUrlKey(item.id, (item as any).sources)));
+        const mergedItems = [...cachedItems];
+        track.medias.forEach((item) => {
+          const key = makeUrlKey(item.id, (item as any).sources);
+          if (cachedKeys.has(key)) return;
+          cachedKeys.add(key);
+          mergedItems.push(toCachedItems([item])[0]);
+        });
+        cacheData.value[projectId][scriptId][track.id] = mergedItems;
       });
     }
 

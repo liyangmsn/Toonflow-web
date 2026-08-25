@@ -43,10 +43,11 @@
             </div>
           </div>
           <!-- 无选中视频时展示参考素材缩略图 -->
-          <div class="thumbGroup" v-else-if="track.medias.some((m) => m.src)">
+          <div class="thumbGroup" v-else-if="track.medias.some((m) => m.src || m.fileType === 'image')">
             <template v-for="(m, i) in track.medias" :key="i">
-              <template v-if="m.src">
-                <t-image fit="cover" v-if="m.fileType === 'image'" :src="m.src" class="thumb" />
+              <template v-if="m.src || m.fileType === 'image'">
+                <t-image fit="cover" v-if="m.fileType === 'image' && m.src" :src="m.src" class="thumb" />
+                <div v-else-if="m.fileType === 'image'" class="thumb placeholder missingImageThumb"></div>
                 <div v-else class="thumb placeholder c">
                   <i-volume-notice v-if="m.fileType === 'audio'" size="20" />
                   <i-video v-else size="24" />
@@ -465,6 +466,7 @@ watch(
           min-width: 0;
           height: 100%;
           object-fit: cover;
+          background: var(--td-bg-color-secondarycontainer);
         }
         .placeholder {
           background: var(--td-bg-color-secondarycontainer);

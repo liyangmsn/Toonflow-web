@@ -264,9 +264,9 @@ const references = computed(() => {
   }
 
   return imageList.value.map((item) => ({
-      type: getFileTypeByExt(item.src) as "image" | "video" | "audio" | "text",
-      src: item.src ?? "",
-    }));
+    type: getFileTypeByExt(item.src) as "image" | "video" | "audio" | "text",
+    src: item.src ?? "",
+  }));
 });
 
 async function getGenerateData() {
@@ -620,6 +620,12 @@ onUnmounted(() => {
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        :deep(.t-loading__parent) {
+          flex: 1;
+          height: 0;
+          display: flex;
+          flex-direction: column;
+        }
         :deep(.t-card__body) {
           flex: 1;
           min-height: 0;
@@ -628,9 +634,8 @@ onUnmounted(() => {
           flex-direction: column;
         }
         .promptData {
-          width: 100%;
           flex: 1;
-          min-height: 0;
+          height: 0;
           display: flex;
           flex-direction: column;
           .promptInput {
