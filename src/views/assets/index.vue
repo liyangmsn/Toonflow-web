@@ -297,7 +297,7 @@
                 @select-change="handleSelectChange"
                 @expand-change="handleExpandChange"
                 @page-change="handlePageChange">
-                <template #expandedRow="{ row }" v-if="!selectorMode">
+                <template #expandedRow="{ row }">
                   <div class="expandedContent">
                     <t-table
                       :columns="subAudioColumns"
@@ -328,12 +328,17 @@
                       </template>
                       <template #operation="{ row: subRow }">
                         <t-space :size="0">
-                          <t-button
-                            :theme="subRow.isCurrent ? 'success' : 'primary'"
-                            variant="text"
-                            :disabled="subRow.isCurrent"
-                            @click="selectCurrentAudio(subRow)">
-                            {{ subRow.isCurrent ? $t("workbench.assets.currentAudioInUse") : $t("workbench.assets.setAsCurrentAudio") }}
+                          <t-button theme="primary" variant="text" :disabled="isGenerating(subRow.id)" @click="openAudioGeneration(subRow)">
+                            <template #icon>
+                              <i-magic :size="18" />
+                            </template>
+                            {{ $t("workbench.assets.generate") }}
+                          </t-button>
+                          <t-button theme="primary" variant="text" @click="handleEdit(subRow)">
+                            <template #icon>
+                              <t-icon name="edit" />
+                            </template>
+                            {{ $t("workbench.assets.edit") }}
                           </t-button>
                           <t-button theme="danger" variant="text" :disabled="isGenerating(subRow.id)" @click="handleDelete(subRow)">
                             <template #icon>
@@ -552,11 +557,11 @@ interface Asset {
   describe: string;
   remark: string;
   src: string;
-  type: "role" | "tool" | "scene" | "clip"; // "角色" | "道具" | "场景" | "素材"
+  type: "role" | "tool" | "scene" | "clip" | "audio"; // "角色" | "道具" | "场景" | "素材" | "音频"
   state: string;
   sonAssets?: Asset[]; // 子资产列表
-  isCurrent?: boolean; // 音色子版本是否为当前使用
   imageId: number;
+  audioId?: number | null;
   promptState: string;
   filePath: string;
 }
@@ -1147,21 +1152,6 @@ function openAudioGeneration(row: any) {
     type: "audio",
   };
   audioGenerationShow.value = true;
-}
-// 切换音色当前使用的版本
-async function selectCurrentAudio(subRow: any) {
-  try {
-    await axios.post("/assets/selectAudioVersion", { childId: subRow.id });
-    tableData.value.forEach((row) => {
-      if (row.id !== subRow.assetsId) return;
-      (row.sonAssets || []).forEach((child) => {
-        child.isCurrent = child.id === subRow.id;
-      });
-    });
-    window.$message.success($t("workbench.assets.switchAudioSuccess"));
-  } catch (e: any) {
-    window.$message.error(e?.message ?? $t("workbench.assets.switchAudioFail"));
-  }
 }
 // 编辑
 function handleEdit(row: any) {

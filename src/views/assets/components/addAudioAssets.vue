@@ -19,7 +19,10 @@
         <t-form-item :label="$t('workbench.assets.add.sex')" name="remark">
           <t-input v-model="props.formData.sex" :placeholder="$t('workbench.assets.add.sexPh')"></t-input>
         </t-form-item>
-        <t-form-item :label="$t('workbench.assets.add.audioFile')" name="audioFile">
+        <t-form-item v-if="props.formData.assetsId" :label="$t('workbench.assets.audioText')" name="prompt">
+          <t-input v-model="props.formData.prompt" :placeholder="$t('workbench.assets.audioText')" />
+        </t-form-item>
+        <t-form-item v-else :label="$t('workbench.assets.add.audioFile')" name="audioFile">
           <div class="audio-list">
             <div v-for="(item, index) in audioItems" :key="index" class="audio-item">
               <div class="audio-upload-row">
@@ -78,9 +81,11 @@ interface AudioItem {
 const props = defineProps<{
   formData: {
     id?: number;
+    assetsId?: number | null;
     name: string;
     describe: string;
     sex: string;
+    prompt?: string;
     sonAssets?: {
       id?: number;
       src?: string;
@@ -216,6 +221,7 @@ function onConfirm() {
       const payload = {
         name: props.formData.name,
         describe: props.formData.sex + "|" + props.formData.describe,
+        ...(props.formData.assetsId ? { prompt: props.formData.prompt || "" } : {}),
         projectId: project.value?.id ?? 0,
         assetsItem,
       };

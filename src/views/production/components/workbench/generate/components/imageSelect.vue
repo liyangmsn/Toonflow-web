@@ -11,10 +11,19 @@
             </template>
           </t-image>
         </t-tooltip>
-        <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item?.prompt || ''">
+        <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item.name || ''">
           <div class="mediaPreview audioPreview">
-            <i-acoustic size="20" />
-            <span class="mediaLabel">音频</span>
+            <div class="audioPreviewStatic">
+              <i-acoustic size="20" />
+              <span class="mediaLabel">音频</span>
+            </div>
+            <button
+              type="button"
+              class="audioPreviewButton"
+              :aria-label="isAudioPlaying && playingAudioIndex === index ? '暂停试听' : '播放试听'"
+              @click.stop="toggleAudio(index, item.src!)">
+              <component :is="isAudioPlaying && playingAudioIndex === index ? 'i-pause' : 'i-play'" theme="outline" size="18" />
+            </button>
           </div>
         </t-tooltip>
         <div v-else-if="item.fileType == 'video'" class="mediaPreview videoPreview">
@@ -123,6 +132,51 @@ const props = withDefaults(
 const imageList = defineModel<UploadItem[]>({
   default: () => [],
 });
+const playingAudioIndex = ref<number | null>(null);
+const isAudioPlaying = ref(false);
+const playingAudio = new Audio();
+playingAudio.preload = "metadata";
+
+playingAudio.addEventListener("pause", () => {
+  isAudioPlaying.value = false;
+});
+playingAudio.addEventListener("ended", () => {
+  playingAudioIndex.value = null;
+  isAudioPlaying.value = false;
+});
+
+function playAudio(index: number) {
+  void playingAudio.play().catch(() => {
+    if (playingAudioIndex.value !== index) return;
+    playingAudioIndex.value = null;
+    isAudioPlaying.value = false;
+  });
+}
+
+function toggleAudio(index: number, src: string) {
+  if (playingAudioIndex.value === index) {
+    if (isAudioPlaying.value) {
+      playingAudio.pause();
+    } else {
+      isAudioPlaying.value = true;
+      playAudio(index);
+    }
+    return;
+  }
+
+  playingAudio.pause();
+  playingAudio.src = src;
+  playingAudio.load();
+  playingAudioIndex.value = index;
+  isAudioPlaying.value = true;
+  playAudio(index);
+}
+
+function stopAudio() {
+  playingAudio.pause();
+  playingAudioIndex.value = null;
+  isAudioPlaying.value = false;
+}
 
 //分镜选择弹窗
 const storyboardDialogVisible = ref(false);
@@ -204,7 +258,8 @@ const isShowAddImage = computed(() => {
 
 /** 根据文件扩展名推断媒体类型 */
 function getFileTypeByExt(src: string | undefined): "image" | "video" | "audio" {
-  const ext = src?.split(".").pop()?.toLowerCase() ?? "";
+  const cleanSrc = src?.split("?")[0].split("#")[0] ?? "";
+  const ext = cleanSrc.split(".").pop()?.toLowerCase() ?? "";
   if (["mp4", "webm", "mov", "avi", "mkv"].includes(ext)) return "video";
   if (["mp3", "wav", "ogg", "aac", "flac", "m4a"].includes(ext)) return "audio";
   return "image";
@@ -251,19 +306,6 @@ async function pickFromAssets() {
   if (!assets.length) return;
 
   const newItems: UploadItem[] = assets.flatMap((asset) => {
-    if (asset.type === "audio" && asset?.sonAssets?.length) {
-      return asset.sonAssets.map((sub: any) => {
-        const fileType = getFileTypeByExt(sub.src);
-        return {
-          fileType,
-          sources: "assets",
-          src: sub.src,
-          id: sub.id,
-          name: sub.name,
-          prompt: sub.prompt,
-        } as UploadItem;
-      });
-    }
     const fileType = getFileTypeByExt(asset.src);
     return [
       {
@@ -331,6 +373,7 @@ function pickReferenceVideo(video: ReferenceVideoItem) {
   }
 }
 function splitImage(index: number) {
+  stopAudio();
   const list = [...imageList.value];
   list.splice(index, 1);
   imageList.value = list;
@@ -418,8 +461,55 @@ watch(imageList, console.log);
         color: var(--td-text-color-secondary);
       }
       &.audioPreview {
+        position: relative;
         background: var(--td-bg-color-secondarycontainer);
         color: var(--td-brand-color);
+        padding: 4px;
+        box-sizing: border-box;
+
+        .audioPreviewStatic {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          transition: opacity 0.15s ease;
+        }
+
+        .audioPreviewButton {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 28px;
+          height: 28px;
+          transform: translate(-50%, -50%);
+          border: 0;
+          border-radius: 50%;
+          padding: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: inherit;
+          background: var(--td-bg-color-container);
+          cursor: pointer;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.15s ease;
+
+          &:hover {
+            background: var(--td-brand-color-light);
+          }
+        }
+
+        &:hover {
+          .audioPreviewStatic {
+            opacity: 0;
+          }
+
+          .audioPreviewButton {
+            opacity: 1;
+            pointer-events: auto;
+          }
+        }
       }
       &.videoPreview {
         background: #000;

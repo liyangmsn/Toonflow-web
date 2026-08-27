@@ -28,6 +28,24 @@ function makeUrlKey(id: number | null | undefined, sources: string | undefined):
   return `${id ?? ""}:${sources ?? ""}`;
 }
 
+/** 音频和视频必须使用原始媒体地址，不能带图片缩略图参数。 */
+function removeThumbnailSize(src: string | undefined, fileType: string | undefined): string {
+  if (!src) return "";
+  const cleanSrc = src.split("?")[0].split("#")[0].toLowerCase();
+  const isMediaFile = /\.(mp3|wav|ogg|aac|flac|m4a|mp4|webm|mov|avi|mkv)$/.test(cleanSrc);
+  if (!isMediaFile && fileType !== "audio" && fileType !== "video") return src;
+  const hashIndex = src.indexOf("#");
+  const hash = hashIndex >= 0 ? src.slice(hashIndex) : "";
+  const withoutHash = hashIndex >= 0 ? src.slice(0, hashIndex) : src;
+  const queryIndex = withoutHash.indexOf("?");
+  if (queryIndex < 0) return src;
+  const pathname = withoutHash.slice(0, queryIndex);
+  const params = new URLSearchParams(withoutHash.slice(queryIndex + 1));
+  params.delete("size");
+  const query = params.toString();
+  return `${pathname}${query ? `?${query}` : ""}${hash}`;
+}
+
 /** 从完整 URL 中提取路径部分（去掉 origin） */
 function extractPath(url: string | undefined): string {
   if (!url) return "";
@@ -46,7 +64,7 @@ function extractPath(url: string | undefined): string {
 function toCachedItems(items: (UploadItem | TrackMedia)[]): CachedUploadItem[] {
   return items.map((item) => ({
     ...JSON.parse(JSON.stringify(item)),
-    src: extractPath(item.src),
+    src: extractPath(removeThumbnailSize(item.src, item.fileType)),
   }));
 }
 
@@ -128,12 +146,12 @@ export default defineStore(
     }
 
     /** 将缓存项还原为带完整 URL 的 UploadItem[]（同步版，需先调用 resolveUrls） */
-    function toFullItems(items: CachedUploadItem[]): UploadItem[] {
-      return items.map((item) => ({
-        ...item,
-        src: resolveUrlSync(item.id, (item as any).sources, item.src),
-      })) as UploadItem[];
-    }
+  function toFullItems(items: CachedUploadItem[]): UploadItem[] {
+    return items.map((item) => ({
+      ...item,
+      src: removeThumbnailSize(resolveUrlSync(item.id, (item as any).sources, item.src), item.fileType),
+    })) as UploadItem[];
+  }
 
     /**
      * 获取指定 project / script / track 的缓存图片列表
@@ -184,7 +202,7 @@ export default defineStore(
         if (!item.src || item.id == null) return;
         const key = makeUrlKey(item.id, (item as any).sources);
         if (!urlMap.value[key]) {
-          urlMap.value[key] = item.src;
+          urlMap.value[key] = removeThumbnailSize(item.src, item.fileType);
           urlMapDirty = true;
         }
       });
