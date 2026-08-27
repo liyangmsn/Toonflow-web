@@ -161,7 +161,7 @@ function onSpaceMouseUp() {
 }
 
 useEventListener(document, "keydown", (e: KeyboardEvent) => {
-  if (e.code === "Space" && !e.repeat) {
+  if (e.code === "Space" && !e.repeat && !(e.target as HTMLElement)?.isContentEditable) {
     e.preventDefault();
     isSpacePressed.value = true;
   }

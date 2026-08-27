@@ -384,7 +384,7 @@ const handleSelectAll = (checked: boolean | string[]) => {
   shotList.value.forEach((shot) => (shot.selected = isChecked));
 };
 useEventListener(document, "keydown", (e: KeyboardEvent) => {
-  if (e.code === "Space" && !e.repeat) {
+  if (e.code === "Space" && !e.repeat && !(e.target as HTMLElement)?.isContentEditable) {
     e.preventDefault();
     const data = shotList.value[currentShotIndex.value];
     if (data) {
