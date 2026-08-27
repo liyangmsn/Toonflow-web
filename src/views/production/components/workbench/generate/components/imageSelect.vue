@@ -1,96 +1,43 @@
 <template>
   <div class="imageUploadBox ac">
-    <!-- 单图模式 -->
-    <template v-if="mode == 'singleImage' || Array.isArray(parseMode(mode as string))">
-      <div class="uploadBtn c fc" v-for="(item, index) in mode == 'singleImage' ? imageList.slice(0, 1) : imageList" :key="index">
-        <template v-if="item.src">
-          <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
-            <t-image :src="item.src" fit="contain" class="uploadPreview">
-              <template #overlayContent>
-                <div class="imageToolsWrap">
-                  <ImageTools :src="item.src!" position="br" />
-                </div>
-              </template>
-            </t-image>
-          </t-tooltip>
-          <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item?.prompt || ''">
-            <div class="mediaPreview audioPreview">
-              <i-acoustic size="20" />
-              <span class="mediaLabel">音频</span>
-            </div>
-          </t-tooltip>
-          <div v-else-if="item.fileType == 'video'" class="mediaPreview videoPreview">
-            <video class="uploadPreview" :src="item.src" preload="metadata" muted />
+    <div class="uploadBtn c fc" :style="{borderColor: item.sources=='storyboard'?'blue':''}" v-for="(item, index) in imageList" :key="index">
+      <template v-if="item.src">
+        <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
+          <t-image :src="item.src" fit="contain" class="uploadPreview">
+            <template #overlayContent>
+              <div class="imageToolsWrap">
+                <ImageTools :src="item.src!" position="br" />
+              </div>
+            </template>
+          </t-image>
+        </t-tooltip>
+        <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item?.prompt || ''">
+          <div class="mediaPreview audioPreview">
+            <i-acoustic size="20" />
+            <span class="mediaLabel">音频</span>
           </div>
-        </template>
-        <template v-else>
-          <t-tooltip theme="primary" :content="item?.prompt ? '音频内容：' + item.prompt : ''">
-            <span style="font-size: 20px">文</span>
-          </t-tooltip>
-        </template>
-        <div class="imageTitleWrap" v-if="(item.sources == 'storyboard' || item.sources == 'video') && item.index != null">
-          {{ item.sources == "video" ? `#${item.index + 1} · V${item.version ?? 1}` : `P${item.index + 1}` }}
+        </t-tooltip>
+        <div v-else-if="item.fileType == 'video'" class="mediaPreview videoPreview">
+          <video class="uploadPreview" :src="item.src" preload="metadata" muted />
         </div>
-        <div class="clearBtn" @click="splitImage(index)">
-          <i-close size="12" />
-        </div>
-        <div class="source">
-          <t-tag size="small">
-            {{ sourceLabel(item.sources) }}
-          </t-tag>
-        </div>
+      </template>
+      <template v-else>
+        <t-tooltip theme="primary" :content="item?.prompt || ''">
+          <span style="font-size: 20px">文</span>
+        </t-tooltip>
+      </template>
+      <div class="imageTitleWrap" v-if="(item.sources == 'storyboard' || item.sources == 'video') && item.index != null">
+        {{ item.sources == "video" ? `#${item.index + 1} · V${item.version ?? 1}` : `P${item.index + 1}` }}
       </div>
-    </template>
-    <template v-else-if="mode == 'endFrameOptional' || mode == 'startFrameOptional' || mode == 'startEndRequired'">
-      <div class="uploadBtn c fc" v-for="(item, index) in buildLabel" :key="item.value" @click="handleMixedAdd(item.value as 'start' | 'end')">
-        <div v-if="!isEmptySlot(imageList?.[index])" style="flex: 1; width: 100%" class="ac">
-          <template v-if="imageList?.[index]?.src">
-            <t-tooltip v-if="imageList?.[index]?.fileType == 'image'" theme="primary" :content="imageList?.[index]?.name || ''">
-              <t-image :src="imageList?.[index]!.src" fit="contain" class="uploadPreview">
-                <template #overlayContent>
-                  <div class="imageToolsWrap">
-                    <ImageTools :src="imageList?.[index]!.src" position="br" />
-                  </div>
-                </template>
-              </t-image>
-            </t-tooltip>
-            <div v-else-if="imageList?.[index]?.fileType == 'audio'" class="mediaPreview audioPreview">
-              <i-acoustic size="20" />
-              <span class="mediaLabel">音频</span>
-            </div>
-            <div v-else-if="imageList?.[index]?.fileType == 'video'" class="mediaPreview videoPreview">
-              <video class="uploadPreview" :src="imageList?.[index]!.src" preload="metadata" muted />
-            </div>
-          </template>
-          <template v-else>
-            <t-tooltip theme="primary" :content="imageList?.[index]?.prompt || ''">
-              <span style="font-size: 20px">文</span>
-            </t-tooltip>
-          </template>
-          <div
-            class="imageTitleWrap"
-            v-if="(imageList?.[index]?.sources == 'storyboard' || imageList?.[index]?.sources == 'video') && imageList?.[index]?.index != null">
-            {{
-              imageList?.[index]?.sources == "video"
-                ? `#${imageList[index]?.index + 1} · V${imageList[index]?.version ?? 1}`
-                : `P${imageList[index]?.index + 1}`
-            }}
-          </div>
-          <div class="clearBtn" @click.stop="clearImage(index)">
-            <i-close size="12" />
-          </div>
-          <div class="source">
-            <t-tag size="small">
-              {{ sourceLabel(imageList?.[index]?.sources) }}
-            </t-tag>
-          </div>
-        </div>
-        <template v-else>
-          <i-plus size="24"></i-plus>
-          {{ item.label }}
-        </template>
+      <div class="clearBtn" @click="splitImage(index)">
+        <i-close size="12" />
       </div>
-    </template>
+      <div class="source">
+        <t-tag size="small">
+          {{ sourceLabel(item.sources) }}
+        </t-tag>
+      </div>
+    </div>
     <div class="uploadBtn c fc" v-if="isShowAddImage" @click="handleMixedAdd()">
       <i-plus size="24"></i-plus>
       {{ $t("workbench.generate.addReference") }}
@@ -176,6 +123,7 @@ const props = withDefaults(
 const imageList = defineModel<UploadItem[]>({
   default: () => [],
 });
+
 //分镜选择弹窗
 const storyboardDialogVisible = ref(false);
 //参考来源选择弹窗
@@ -387,6 +335,7 @@ function splitImage(index: number) {
   list.splice(index, 1);
   imageList.value = list;
 }
+watch(imageList, console.log);
 </script>
 
 <style lang="scss" scoped>

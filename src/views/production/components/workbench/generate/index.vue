@@ -106,17 +106,6 @@ const imageList = computed({
     // 触发对 urlMap 的依赖追踪，当 warmUpUrls 更新 urlMap 后自动重新计算
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     urlMap.value;
-    const trackId = currentTrack.value?.id;
-    const pid = project.value?.id;
-    const sid = episodesId.value;
-    // 优先从缓存读取
-    if (pid != null && sid != null && trackId != null) {
-      const cached = getCache(pid, sid, trackId);
-
-      if (cached?.length) {
-        return [...cached].sort((a, b) => getImageItemPriority(a) - getImageItemPriority(b));
-      }
-    }
     const medias = currentTrack.value?.medias;
     if (!medias?.length) return [];
     return [...(medias as UploadItem[])].sort((a, b) => getImageItemPriority(a) - getImageItemPriority(b));
@@ -124,13 +113,6 @@ const imageList = computed({
   set(val: UploadItem[]) {
     if (currentTrack.value) {
       currentTrack.value.medias = val as any;
-      // 同步写入缓存
-      const pid = project.value?.id;
-      const sid = episodesId.value;
-      const trackId = currentTrack.value.id;
-      if (pid != null && sid != null && trackId != null) {
-        setCache(pid, sid, trackId, val);
-      }
     }
   },
 });
