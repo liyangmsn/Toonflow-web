@@ -1,6 +1,6 @@
 <template>
   <div class="imageUploadBox ac">
-    <div class="uploadBtn c fc" :style="{borderColor: item.sources=='storyboard'?'blue':''}" v-for="(item, index) in imageList" :key="index">
+    <div class="uploadBtn c fc" v-for="(item, index) in imageList" :key="index">
       <template v-if="item.src">
         <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
           <t-image :src="item.src" fit="contain" class="uploadPreview">

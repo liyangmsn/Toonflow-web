@@ -208,6 +208,36 @@ function makeProductionAgentStore(projectId: string) {
             const storyData = await batchGenerateStoryboard(data.ids);
             callback({ success: true, message: storyData });
           });
+          s.on("generateWorkbenchPrompt", async (data, callback) => {
+            try {
+              const { data: prompt } = await axios.post("/production/workbench/generateVideoPrompt", {
+                projectId: data.projectId ?? projectId,
+                scriptId: data.scriptId ?? episodesId.value,
+                trackId: data.trackId,
+                info: data.info,
+                model: data.model,
+                mode: data.mode,
+              });
+              callback({ success: true, prompt });
+            } catch (e: any) {
+              callback({ success: false, message: e?.message || "视频提示词生成失败" });
+            }
+          });
+          s.on("generateWorkbenchPrompts", async (data, callback) => {
+            try {
+              const { data: result } = await axios.post("/production/workbench/batchGeneratePrompt", {
+                projectId: data.projectId ?? projectId,
+                scriptId: data.scriptId ?? episodesId.value,
+                trackData: data.trackData,
+                model: data.model,
+                mode: data.mode,
+                concurrentCount: data.concurrentCount,
+              });
+              callback({ success: true, data: result });
+            } catch (e: any) {
+              callback({ success: false, message: e?.message || "批量视频提示词生成失败" });
+            }
+          });
           s.on("addStoryboard", async (data, callback) => {
             try {
               const insertVal = createStoryboardValue(data);
@@ -245,17 +275,20 @@ function makeProductionAgentStore(projectId: string) {
                   duration: Number(data.duration) || 0,
                   videoDesc: data.videoDesc || "",
                   track: data.track || "",
+                  groupKey: data.groupKey,
                   shouldGenerateImage: parseShouldGenerateImage(data.shouldGenerateImage),
-                  associateAssetsIds: data.associateAssetsIds || [],
+                  associateAssetsIds: [],
                   scriptId: episodesId.value,
                   projectId,
                 });
 
+                const previousGroupKey = target.groupKey;
                 Object.assign(target, createStoryboardValue(data), {
                   id: data.id,
                   src: null,
                   flowId: undefined,
                 });
+                if (data.groupKey === undefined) target.groupKey = previousGroupKey;
               }
               throttledFn();
               callback({ success: true, message: data.id == null ? "分镜新增成功" : "分镜替换成功" });
@@ -555,6 +588,7 @@ function makeProductionAgentStore(projectId: string) {
         const source = pendingItems.splice(sourceIndex, 1)[0];
         source.id = updated.id;
         source.trackId = updated.trackId;
+        source.groupKey = updated.groupKey;
         source.src = updated.src;
         source.state = updated.state;
         source.associateAssetsIds = updated.associateAssetsIds;
@@ -570,11 +604,12 @@ function makeProductionAgentStore(projectId: string) {
         prompt: data.prompt || "",
         duration: Number(data.duration) || 0,
         track: data.track || "",
+        groupKey: data.groupKey ?? null,
         state: "未生成" as "未生成" | "生成中" | "已完成" | "生成失败",
         src: null,
         videoDesc: data.videoDesc || "",
         shouldGenerateImage: parseShouldGenerateImage(data.shouldGenerateImage),
-        associateAssetsIds: data.associateAssetsIds || [],
+        associateAssetsIds: [],
       };
     }
 

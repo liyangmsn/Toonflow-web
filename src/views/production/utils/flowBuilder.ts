@@ -46,6 +46,8 @@ export interface Storyboard {
   duration?: number;
   prompt: string;
   trackId?: number;
+  track?: string | null;
+  groupKey?: string | null;
   associateAssetsIds?: number[];
   src: string | null;
   state: "未生成" | "生成中" | "已完成" | "生成失败";

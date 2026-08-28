@@ -73,6 +73,7 @@ interface TrackItem {
   medias: TrackMedia[];
   videoList: VideoItem[];
   duration: number;
+  referenceItems?: { id: number; sources: "storyboard" | "assets" | "video" }[];
 }
 
 interface VideoItem {
