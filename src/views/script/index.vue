@@ -80,9 +80,6 @@ import addScript from "./components/addScript.vue";
 import batchAddScript from "./components/batchAddScript.vue";
 import projectStore from "@/stores/project";
 import settingStore from "@/stores/setting";
-import imageListCacheStore from "@/stores/imageListCache";
-
-const { clearScriptCache } = imageListCacheStore();
 
 const { otherSetting } = storeToRefs(settingStore());
 const { project } = storeToRefs(projectStore());
@@ -197,7 +194,6 @@ async function handleDeleteScript(scriptId: number) {
       try {
         await axios.post("/script/delScript", { ids: [scriptId] });
         window.$message.success($t("workbench.script.msg.deleteSuccess"));
-        clearScriptCache(project.value!.id, scriptId);
         searchScripts();
         dialog.destroy();
 
@@ -224,10 +220,6 @@ async function handleExtractAssets() {
       projectId: project.value!.id,
       groupSize: otherSetting.value.assetsBatchGenereateSize,
     });
-    // 资产重提取会补充剧本/分镜资产绑定，旧轨道缓存不能继续覆盖最新参考素材列表。
-    for (const scriptId of selectedIds.value) {
-      clearScriptCache(project.value!.id, scriptId);
-    }
     searchScripts();
     selectedIds.value = [];
   } catch (e) {
@@ -257,9 +249,6 @@ async function handleBatchDelete() {
       try {
         await axios.post("/script/delScript", { ids: selectedIds.value });
         window.$message.success($t("workbench.script.msg.batchDeleteSuccess"));
-        for (const item of selectedIds.value) {
-          clearScriptCache(project.value!.id, item);
-        }
         searchScripts();
         dialog.destroy();
       } catch (error) {

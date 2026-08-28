@@ -208,6 +208,34 @@ function makeProductionAgentStore(projectId: string) {
             const storyData = await batchGenerateStoryboard(data.ids);
             callback({ success: true, message: storyData });
           });
+          s.on("generateWorkbenchPrompt", async (data, callback) => {
+            try {
+              const { data: prompt } = await axios.post("/production/workbench/generateVideoPrompt", {
+                projectId: data.projectId ?? projectId,
+                trackId: data.trackId,
+                info: data.info,
+                model: data.model,
+                mode: data.mode,
+              });
+              callback({ success: true, prompt });
+            } catch (e: any) {
+              callback({ success: false, message: e?.message || "视频提示词生成失败" });
+            }
+          });
+          s.on("generateWorkbenchPrompts", async (data, callback) => {
+            try {
+              const { data: result } = await axios.post("/production/workbench/batchGeneratePrompt", {
+                projectId: data.projectId ?? projectId,
+                trackData: data.trackData,
+                model: data.model,
+                mode: data.mode,
+                concurrentCount: data.concurrentCount,
+              });
+              callback({ success: true, data: result });
+            } catch (e: any) {
+              callback({ success: false, message: e?.message || "批量视频提示词生成失败" });
+            }
+          });
           s.on("addStoryboard", async (data, callback) => {
             try {
               const insertVal = createStoryboardValue(data);

@@ -72,13 +72,11 @@ import type { Ref } from "vue";
 import "@/views/production/components/workbench/type/type";
 import axios from "@/utils/axios";
 import projectStore from "@/stores/project";
-import imageListCacheStore from "@/stores/imageListCache";
 import JSZip from "jszip";
 import settingStore from "@/stores/setting";
 
 const { otherSetting } = storeToRefs(settingStore());
 const { project } = storeToRefs(projectStore());
-const { removeCache } = imageListCacheStore();
 const episodesId = inject<Ref<number>>("episodesId")!;
 const props = defineProps<{
   modelParmas: ModelSetting;
@@ -164,12 +162,6 @@ async function deleteTrack(index: number) {
   if (!track) return;
   await axios.post("/production/workbench/deleteTrack", { id: track.id });
   checkedTrackIds.value = checkedTrackIds.value.filter((id) => id !== track.id);
-  // 删除该轨道的图片缓存
-  const pid = project.value?.id;
-  const sid = episodesId.value;
-  if (pid != null && sid != null && track.id != null) {
-    removeCache(pid, sid, track.id);
-  }
   if (activeTrackIndex.value >= trackList.value.length) {
     activeTrackIndex.value = trackList.value.length - 1;
   }
