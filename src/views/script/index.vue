@@ -224,6 +224,10 @@ async function handleExtractAssets() {
       projectId: project.value!.id,
       groupSize: otherSetting.value.assetsBatchGenereateSize,
     });
+    // 资产重提取会补充剧本/分镜资产绑定，旧轨道缓存不能继续覆盖最新参考素材列表。
+    for (const scriptId of selectedIds.value) {
+      clearScriptCache(project.value!.id, scriptId);
+    }
     searchScripts();
     selectedIds.value = [];
   } catch (e) {

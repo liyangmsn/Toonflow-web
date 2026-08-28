@@ -197,6 +197,9 @@
           <t-form-item :label="$t('workbench.cornerScape.resolution')">
             <t-select v-model="editForm.resolution" :placeholder="$t('workbench.cornerScape.resolutionPh')" :options="resolutionOptions" />
           </t-form-item>
+          <t-form-item :label="$t('workbench.cornerScape.descriptionSuffix')">
+            <div class="drawerDescription">{{ currentItem.describe || "—" }}</div>
+          </t-form-item>
           <t-form-item :label="$t('workbench.cornerScape.promptLabel')">
             <t-loading style="width: 100%" :loading="currentItem.promptState == '生成中'">
               <t-textarea
@@ -1186,6 +1189,18 @@ async function selectAudio() {
 .audioList {
   margin-top: 8px;
 }
+.drawerDescription {
+  width: 100%;
+  padding: 8px 10px;
+  color: var(--td-text-color-secondary);
+  background: var(--td-bg-color-container-hover);
+  border: 1px solid var(--td-border-level-1-color);
+  border-radius: 4px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .drawerImageBox {
   width: 100%;
   min-height: 120px;
