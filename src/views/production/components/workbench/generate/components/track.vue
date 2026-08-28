@@ -254,6 +254,7 @@ function batchGenText() {
   axios
     .post("/production/workbench/batchGeneratePrompt", {
       projectId: project.value?.id,
+      scriptId: episodesId.value,
       trackData,
       model: props.modelParmas.model,
       mode: props.modelParmas.mode,
@@ -312,6 +313,7 @@ function batchGenVideo() {
           prompt: track.prompt,
           uploadData,
           trackId,
+          analyzeReferences: track.referenceItems == null,
         };
       });
       const requestData = {

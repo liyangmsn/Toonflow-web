@@ -340,6 +340,7 @@ async function genText() {
   try {
     const { data } = await axios.post("/production/workbench/generateVideoPrompt", {
       projectId: project.value?.id,
+      scriptId: episodesId.value,
       trackId: currentTrackId,
       info: info,
       model: modelParmas.value.model,
@@ -403,6 +404,7 @@ async function generateVideo() {
           duration: modelParmas.value.duration,
           audio: modelParmas.value.audio,
           trackId: currentTrack.value.id,
+          analyzeReferences: currentTrack.value.referenceItems == null,
         });
         window.$message.success($t("workbench.generate.generateStarted"));
         currentTrack.value.videoList.push({
