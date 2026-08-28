@@ -205,8 +205,26 @@ function makeProductionAgentStore(projectId: string) {
             callback({ success: true, message: assetsData });
           });
           s.on("generateStoryboard", async (data, callback) => {
-            const storyData = await batchGenerateStoryboard(data.ids);
-            callback({ success: true, message: storyData });
+            try {
+              const storyData = await batchGenerateStoryboard(data.ids, true);
+              callback({ success: true, message: storyData });
+            } catch (e) {
+              callback({ success: false, error: (e as any)?.message || "分镜生成失败" });
+            }
+          });
+          s.on("generateStoryboardPrompt", async (data, callback) => {
+            try {
+              const { data: result } = await axios.post("/production/storyboard/batchGenerateStoryboardPrompt", {
+                projectId,
+                scriptId: episodesId.value,
+                storyboardIds: data.ids,
+                concurrentCount: settingStore().otherSetting.assetsBatchGenereateSize,
+              });
+              await getFlowData();
+              callback({ success: true, data: result });
+            } catch (e: any) {
+              callback({ success: false, error: e?.message || "分镜提示词生成失败" });
+            }
           });
           s.on("generateWorkbenchPrompt", async (data, callback) => {
             try {
@@ -269,14 +287,15 @@ function makeProductionAgentStore(projectId: string) {
                 const target = flowData.value.storyboard.find((item) => item.id === data.id);
                 if (!target) return callback({ success: false, message: `未找到分镜面板 ${data.id}` });
 
-                await axios.post("/production/storyboard/updateStoryboard", {
+                const { data: updateResult } = await axios.post("/production/storyboard/updateStoryboard", {
                   id: data.id,
-                  prompt: data.prompt ?? "",
+                  prompt: null,
                   duration: Number(data.duration) || 0,
                   videoDesc: data.videoDesc || "",
                   track: data.track || "",
                   groupKey: data.groupKey,
-                  shouldGenerateImage: parseShouldGenerateImage(data.shouldGenerateImage),
+                  storyboardTable: data.storyboardTable,
+                  shouldGenerateImage: 0,
                   associateAssetsIds: [],
                   scriptId: episodesId.value,
                   projectId,
@@ -287,6 +306,9 @@ function makeProductionAgentStore(projectId: string) {
                   id: data.id,
                   src: null,
                   flowId: undefined,
+                  prompt: "",
+                  shouldGenerateImage: 0,
+                  associateAssetsIds: updateResult.associateAssetsIds,
                 });
                 if (data.groupKey === undefined) target.groupKey = previousGroupKey;
               }
@@ -366,19 +388,23 @@ function makeProductionAgentStore(projectId: string) {
           if (flowData.value.storyboard.length === 0) {
             flowData.value.storyboard = data;
             return data;
-          } else {
-            flowData.value.storyboard.forEach((item) => {
-              const findData = data.find((i: any) => i.id == item.id);
-              if (findData) {
-                item.state = findData.state;
-                item.src = findData.src;
-              }
-            });
           }
+          flowData.value.storyboard.forEach((item) => {
+            const findData = data.find((i: any) => i.id == item.id);
+            if (findData) {
+              item.state = findData.state;
+              item.src = findData.src;
+              item.prompt = findData.prompt ?? "";
+              item.associateAssetsIds = findData.associateAssetsIds ?? [];
+              item.shouldGenerateImage = findData.shouldGenerateImage ?? item.shouldGenerateImage;
+              item.reason = findData.reason ?? "";
+            }
+          });
         }
         return data;
       } catch (e) {
         window.$message.error((e as any)?.message);
+        throw e;
       }
     }
     async function batchGenerateAssets(allIds: number[]) {
@@ -579,18 +605,16 @@ function makeProductionAgentStore(projectId: string) {
         projectId: projectId,
       });
 
-      const pendingItems = [...items];
-      for (const updated of data as Storyboard[]) {
-        const sourceIndex = pendingItems.findIndex(
-          (item) => item.prompt == updated.prompt && Number(item.duration) == Number(updated.duration) && item.videoDesc == updated.videoDesc,
-        );
-        if (sourceIndex === -1) continue;
-        const source = pendingItems.splice(sourceIndex, 1)[0];
+      for (const [index, updated] of (data as Storyboard[]).entries()) {
+        const source = items[index];
+        if (!source) continue;
         source.id = updated.id;
         source.trackId = updated.trackId;
         source.groupKey = updated.groupKey;
         source.src = updated.src;
         source.state = updated.state;
+        source.prompt = updated.prompt ?? "";
+        source.shouldGenerateImage = updated.shouldGenerateImage ?? 0;
         source.associateAssetsIds = updated.associateAssetsIds;
       }
     }
@@ -605,6 +629,7 @@ function makeProductionAgentStore(projectId: string) {
         duration: Number(data.duration) || 0,
         track: data.track || "",
         groupKey: data.groupKey ?? null,
+        storyboardTable: data.storyboardTable || "",
         state: "未生成" as "未生成" | "生成中" | "已完成" | "生成失败",
         src: null,
         videoDesc: data.videoDesc || "",

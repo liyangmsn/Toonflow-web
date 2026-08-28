@@ -348,6 +348,7 @@ async function genText() {
     });
     track.prompt = data;
     track.state = "已完成";
+    await getGenerateData();
   } catch (e) {
     track.state = "生成失败";
     window.$message.error((e as Error)?.message ?? "提示词生成失败");
@@ -391,7 +392,7 @@ async function generateVideo() {
                       ? imageList.value.slice(0, 1)
                       : imageList.value;
                   const filtered = preSliced
-                    .filter((item) => Boolean(item.src) && typeof item.id === "number" && !isNaN(item.id))
+                    .filter((item) => typeof item.id === "number" && !isNaN(item.id))
                     .map(({ id, sources }) => ({ id, sources }));
                   if (frameMode.includes(modelParmas.value.mode)) return filtered.slice(0, 2);
                   if (modelParmas.value.mode === "singleImage") return filtered.slice(0, 1);
@@ -404,7 +405,7 @@ async function generateVideo() {
           duration: modelParmas.value.duration,
           audio: modelParmas.value.audio,
           trackId: currentTrack.value.id,
-          analyzeReferences: currentTrack.value.referenceItems == null,
+          analyzeReferences: modelParmas.value.mode !== "text",
         });
         window.$message.success($t("workbench.generate.generateStarted"));
         currentTrack.value.videoList.push({
@@ -414,6 +415,7 @@ async function generateVideo() {
           percent: 0,
           stage: "准备生成",
         });
+        void getGenerateData();
       } catch (e) {
         window.$message.error((e as any)?.message ?? "视频发起生成请求失败");
       } finally {

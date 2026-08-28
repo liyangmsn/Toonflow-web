@@ -1214,6 +1214,7 @@
         "generateBtn": "Generate Image",
         "selectImage": "Select Image",
         "imageGeneration": "Image Generation",
+        "videoDesc": "Storyboard Description",
         "promptPlaceholder": "Describe the image you want to generate...",
         "imageRef": "Image {index}",
         "videoRef": "Video {index}",

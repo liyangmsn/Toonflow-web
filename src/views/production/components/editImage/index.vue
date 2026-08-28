@@ -25,7 +25,7 @@
       </template>
 
       <template #node-generated="{ id, data }">
-        <generatedNode :id="id" :data="data" :projectId="+project!.id" @keep="sureNode" />
+        <generatedNode :id="id" :data="data" :projectId="+project!.id" :videoDesc="props.flowData.videoDesc" @keep="sureNode" />
       </template>
       <template #edge-removeLine="edgeProps">
         <removeLine v-bind="edgeProps" />
@@ -97,6 +97,7 @@ const props = withDefaults(
   defineProps<{
     flowData: {
       flowId?: number | null;
+      videoDesc?: string;
       resultImages: { src: string; prompt: string }[]; // 结果图 url 和提示词
       referanceImages: string[]; // 参考图url
     };

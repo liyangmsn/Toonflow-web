@@ -42,6 +42,10 @@
           </div>
         </div>
       </div>
+      <div v-if="videoDesc" class="videoDesc w">
+        <div class="videoDescLabel">{{ $t("workbench.production.editImage.videoDesc") }}</div>
+        <div class="videoDescContent">{{ videoDesc }}</div>
+      </div>
       <div class="text w">
         <PromptEditor v-model="data.prompt" :references="references" :placeholder="$t('workbench.production.editImage.promptPlaceholder')" />
       </div>
@@ -116,7 +120,10 @@ const props = defineProps<{
   id: string;
   data: GeneratedNodeData;
   projectId: number;
+  videoDesc?: string;
 }>();
+
+const videoDesc = computed(() => props.videoDesc?.trim() ?? "");
 
 function selectedFn() {
   selected.value = !selected.value;
@@ -356,6 +363,28 @@ onMounted(() => {
       position: relative;
       overflow: auto;
       resize: vertical;
+    }
+
+    .videoDesc {
+      padding: 10px 10px 0;
+      color: var(--td-text-color-secondary);
+
+      .videoDescLabel {
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+
+      .videoDescContent {
+        max-height: 120px;
+        overflow: auto;
+        padding: 8px;
+        border: 1px solid var(--td-border-level-2-color);
+        border-radius: 6px;
+        background: var(--td-bg-color-component);
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.5;
+      }
     }
 
     .operate {

@@ -265,6 +265,7 @@ function batchGenText() {
       generateTextLoad.value = false;
       checkedTrackIds.value = [];
       checkAll.value = false;
+      emit("getData");
     })
     .catch((e) => {
       window.$message.error(e?.message ?? "生成提示词失败");
@@ -278,19 +279,28 @@ function batchGenText() {
  * 获取指定轨道的上传数据：
  * 当前活动轨道 → uploadBox（含未保存的最新编辑）
  * 其他轨道 → uploadBoxCache（含切换前的编辑）→ 降级 track.medias
- * @param filterEmpty 是否过滤掉没有 src 的项（生成视频时需要过滤，生成提示词时不需要）
+ * @param filterEmpty 是否过滤掉没有真实 ID 的空槽位
  */
 function getTrackUploadInfo(track: TrackItem, filterEmpty = false) {
   const activeTrackId = trackList.value[activeTrackIndex.value]?.id;
 
   if (track.id === activeTrackId) {
     const items = props.imageList as UploadItem[];
-    return (filterEmpty ? items.filter((item) => Boolean(item.src)) : items).map(({ id, sources }) => ({
+    return (filterEmpty ? items.filter((item) => typeof item.id === "number" && !isNaN(item.id)) : items).map(({ id, sources }) => ({
       id,
       sources: (sources ?? "storyboard") as string,
     }));
   }
-  return track.medias.filter((m) => !filterEmpty || Boolean(m.src)).map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
+  return track.medias
+    .filter((m) => !filterEmpty || (typeof m.id === "number" && !isNaN(m.id)))
+    .map(({ id, sources }) => ({ id, sources: (sources ?? "storyboard") as string }));
+}
+function getVideoGenerationUploadInfo(track: TrackItem) {
+  const references = getTrackUploadInfo(track, true);
+  const frameMode = ["startEndRequired", "endFrameOptional", "startFrameOptional"];
+  if (frameMode.includes(props.modelParmas.mode)) return references.slice(0, 2);
+  if (props.modelParmas.mode === "singleImage") return references.slice(0, 1);
+  return references;
 }
 const generateVideoLoad = ref(false);
 /** 批量为已勾选轨道生成视频 */
@@ -302,18 +312,16 @@ function batchGenVideo() {
       dlg.destroy();
 
       const checkedTrackData = trackList.value.filter((track) => checkedTrackIds.value.includes(track.id));
-      const notHasPrompt = checkedTrackData.filter((i) => !i.prompt);
-      if (notHasPrompt.length) return window.$message.warning($t("workbench.generate.skipDataWithEmptyVideoPromptWords"));
 
       const trackData = checkedTrackData.map((track) => {
         const trackId = track.id;
-        const uploadData = props.modelParmas.mode === "text" ? [] : getTrackUploadInfo(track, true);
+        const uploadData = props.modelParmas.mode === "text" ? [] : getVideoGenerationUploadInfo(track);
         return {
           duration: props.clampDuration(track.duration || props.modelParmas.duration),
           prompt: track.prompt,
           uploadData,
           trackId,
-          analyzeReferences: track.referenceItems == null,
+          analyzeReferences: props.modelParmas.mode !== "text",
         };
       });
       const requestData = {
@@ -342,6 +350,7 @@ function batchGenVideo() {
             });
         });
         checkedTrackIds.value = [];
+        emit("getData");
         window.$message.success($t("workbench.generate.generateStarted"));
       } catch (e) {
         window.$message.error((e as any)?.message ?? $t("workbench.generate.generateError"));

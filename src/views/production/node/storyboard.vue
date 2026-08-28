@@ -186,10 +186,12 @@ function handleDeleteSelected() {
 }
 const currentRow = ref<{
   flowId?: number | null;
+  videoDesc?: string;
   resultImages: { src: string; prompt: string }[];
   referanceImages: string[];
 }>({
   flowId: null,
+  videoDesc: "",
   resultImages: [],
   referanceImages: [],
 });
@@ -278,6 +280,7 @@ function editStoryboaryImage(item: Storyboard, images: string[], insertAfterInde
   };
   currentRow.value = {
     flowId: item?.flowId ?? null,
+    videoDesc: item?.videoDesc ?? "",
     resultImages: [],
     referanceImages: [],
   };
@@ -440,13 +443,14 @@ function editInfo(item: Storyboard) {
     onConfirm: async () => {
       confirmDialog.update({ confirmBtn: { content: $t("common.submitting"), loading: true } });
       try {
-        await axios.post("/production/storyboard/editStoryboardInfo", {
+        const { data: updateResult } = await axios.post("/production/storyboard/editStoryboardInfo", {
           id: item.id,
           prompt: formData.prompt,
           videoDesc: formData.videoDesc,
         });
         item.prompt = formData.prompt;
         item.videoDesc = formData.videoDesc;
+        item.associateAssetsIds = updateResult.associateAssetsIds;
         window.$message.success($t("common.editSuccess"));
       } catch (e) {
         window.$message.error((e as any)?.message || $t("common.editFailed"));

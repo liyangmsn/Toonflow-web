@@ -1307,6 +1307,7 @@
         "generateBtn": "生成图片",
         "selectImage": "选择图片",
         "imageGeneration": "图片生成",
+        "videoDesc": "分镜描述",
         "promptPlaceholder": "描述你想要生成的图片...",
         "imageRef": "图片{index}",
         "videoRef": "视频{index}",
