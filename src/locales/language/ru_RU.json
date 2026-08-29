@@ -1397,6 +1397,8 @@
       "generateFailed": "Проверьте причину сбоя",
       "selectAll": "Выбрать все",
       "selected": "Выбрано",
+      "selectUngeneratedPrompt": "Выбрать дорожки без подсказок",
+      "selectUngeneratedVideo": "Выбрать дорожки без созданных видео",
       "batchGenerateText": "Генерируйте подсказки в пакетном режиме",
       "batchGenerateVideo": "Генерируйте видео в пакетном режиме",
       "importVideo": "Импортировать в редакторский стол",

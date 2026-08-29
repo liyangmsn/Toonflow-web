@@ -1388,6 +1388,8 @@
       "generateFailed": "Kiểm tra lý do thất bại",
       "selectAll": "Chọn tất cả",
       "selected": "Đã chọn",
+      "selectUngeneratedPrompt": "Chọn hàng loạt các track chưa có prompt",
+      "selectUngeneratedVideo": "Chọn hàng loạt các track chưa có video",
       "batchGenerateText": "Tạo các từ nhắc nhở theo đợt",
       "batchGenerateVideo": "Tạo video hàng loạt",
       "importVideo": "Nhập vào bàn chỉnh sửa",

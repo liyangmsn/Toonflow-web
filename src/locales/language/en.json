@@ -1569,6 +1569,8 @@
       "generateFailed": "Check the failure reason",
       "selectAll": "Select all",
       "selected": "Selected",
+      "selectUngeneratedPrompt": "Select tracks without prompts",
+      "selectUngeneratedVideo": "Select tracks without generated videos",
       "batchGenerateText": "Generate prompt words in batches",
       "batchGenerateVideo": "Generate videos in batches",
       "importVideo": "Import to editing desk",

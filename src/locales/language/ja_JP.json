@@ -1397,6 +1397,8 @@
       "generateFailed": "失敗の原因を確認する",
       "selectAll": "すべて選択",
       "selected": "選択済み",
+      "selectUngeneratedPrompt": "プロンプト未生成のトラックを一括選択",
+      "selectUngeneratedVideo": "動画未生成のトラックを一括選択",
       "batchGenerateText": "プロンプト単語をバッチで生成する",
       "batchGenerateVideo": "バッチでビデオを生成する",
       "importVideo": "編集デスクにインポートする",

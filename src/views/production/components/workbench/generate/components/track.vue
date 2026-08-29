@@ -8,6 +8,12 @@
         </div>
         <div class="right f ac">
           <t-button size="small" variant="outline" @click="batchDownloadVideo">{{ $t("workbench.generate.batchDownloadVideo") }}</t-button>
+          <t-button size="small" variant="outline" @click="selectUngeneratedPrompt">
+            {{ $t("workbench.generate.selectUngeneratedPrompt") }}
+          </t-button>
+          <t-button size="small" variant="outline" @click="selectUngeneratedVideo">
+            {{ $t("workbench.generate.selectUngeneratedVideo") }}
+          </t-button>
           <t-button size="small" variant="outline" @click="batchGenText" :loading="generateTextLoad">
             {{ $t("workbench.generate.batchGenerateText") }}
           </t-button>
@@ -232,6 +238,35 @@ async function batchDownloadVideo(): Promise<void> {
   checkedTrackIds.value = [];
   checkAll.value = false;
 }
+
+function setCheckedTrackIds(ids: number[]) {
+  checkedTrackIds.value = ids;
+  const allIds = trackList.value.map((track) => track.id).filter((id): id is number => id != null);
+  checkAll.value = allIds.length > 0 && allIds.every((id) => ids.includes(id));
+}
+
+/** 批量选中未生成提示词的轨道 */
+function selectUngeneratedPrompt() {
+  const ids = trackList.value
+    .filter((track) => track.state !== "生成中" && !track.prompt?.trim())
+    .map((track) => track.id)
+    .filter((id): id is number => id != null);
+  setCheckedTrackIds(ids);
+}
+
+/** 批量选中未生成视频的轨道 */
+function selectUngeneratedVideo() {
+  const ids = trackList.value
+    .filter(
+      (track) =>
+        !track.videoList.some((video) => video.state === "已完成" && Boolean(video.src)) &&
+        !track.videoList.some((video) => video.state === "生成中"),
+    )
+    .map((track) => track.id)
+    .filter((id): id is number => id != null);
+  setCheckedTrackIds(ids);
+}
+
 const generateTextLoad = ref(false);
 function batchGenText() {
   generateTextLoad.value = true;
@@ -365,19 +400,14 @@ function batchGenVideo() {
 /** 全选 / 取消全选轨道 */
 function handleCheckAll(val: boolean) {
   const allIds = trackList.value.map((t) => t.id).filter((id): id is number => id != null);
-  checkedTrackIds.value = val ? allIds : [];
+  setCheckedTrackIds(val ? allIds : []);
 }
 
 /** 单个勾选轨道 */
 function toggleCheck(trackId: number | undefined, val: boolean) {
   if (trackId == null) return;
-  if (val) {
-    if (!checkedTrackIds.value.includes(trackId)) checkedTrackIds.value.push(trackId);
-  } else {
-    checkedTrackIds.value = checkedTrackIds.value.filter((id) => id !== trackId);
-  }
-  const allIds = trackList.value.map((t) => t.id).filter((id): id is number => id != null);
-  checkAll.value = allIds.length > 0 && allIds.every((id) => checkedTrackIds.value.includes(id));
+  const ids = val ? [...checkedTrackIds.value, trackId] : checkedTrackIds.value.filter((id) => id !== trackId);
+  setCheckedTrackIds([...new Set(ids)]);
 }
 
 // 轨道列表变化时，截取选中视频首帧（只监听 selectVideoId 和 videoList 变化，避免深度监听整个 trackList）

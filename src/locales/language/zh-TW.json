@@ -1402,6 +1402,8 @@
       "generateFailed": "看失敗原因",
       "selectAll": "全選",
       "selected": "已選",
+      "selectUngeneratedPrompt": "批量選中未生成提示詞",
+      "selectUngeneratedVideo": "批量選中未生成視頻",
       "batchGenerateText": "大量生成提示詞",
       "batchGenerateVideo": "大量生成視頻",
       "importVideo": "導入剪輯台",

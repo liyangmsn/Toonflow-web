@@ -1398,6 +1398,8 @@
       "generateFailed": "ตรวจสอบสาเหตุความล้มเหลว",
       "selectAll": "เลือกทั้งหมด",
       "selected": "เลือกแล้ว",
+      "selectUngeneratedPrompt": "เลือกแทร็กที่ยังไม่มีพรอมต์ทั้งหมด",
+      "selectUngeneratedVideo": "เลือกแทร็กที่ยังไม่มีวิดีโอทั้งหมด",
       "batchGenerateText": "สร้างคำพร้อมท์เป็นชุด",
       "batchGenerateVideo": "สร้างวิดีโอเป็นชุด",
       "importVideo": "นำเข้าไปยังโต๊ะแก้ไข",
