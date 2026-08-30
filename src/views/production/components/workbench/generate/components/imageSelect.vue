@@ -1,6 +1,6 @@
 <template>
   <div class="imageUploadBox ac">
-    <div class="uploadBtn c fc" v-for="(item, index) in imageList" :key="index">
+    <div class="uploadBtn c fc" :class="{ audioUploadBtn: item.fileType === 'audio' }" v-for="(item, index) in imageList" :key="index">
       <template v-if="item.src">
         <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
           <t-image :src="item.src" fit="contain" class="uploadPreview">
@@ -13,17 +13,11 @@
         </t-tooltip>
         <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item.name || ''">
           <div class="mediaPreview audioPreview">
-            <div class="audioPreviewStatic">
+            <div class="audioPreviewHeader">
               <i-acoustic size="20" />
-              <span class="mediaLabel">音频</span>
+              <span class="audioPreviewName">{{ item.name }}</span>
             </div>
-            <button
-              type="button"
-              class="audioPreviewButton"
-              :aria-label="isAudioPlaying && playingAudioIndex === index ? '暂停试听' : '播放试听'"
-              @click.stop="toggleAudio(index, item.src!)">
-              <component :is="isAudioPlaying && playingAudioIndex === index ? 'i-pause' : 'i-play'" theme="outline" size="18" />
-            </button>
+            <audio :src="item.src" controls preload="metadata" class="audioPlayer" />
           </div>
         </t-tooltip>
         <div v-else-if="item.fileType == 'video'" class="mediaPreview videoPreview">
@@ -132,52 +126,6 @@ const props = withDefaults(
 const imageList = defineModel<UploadItem[]>({
   default: () => [],
 });
-const playingAudioIndex = ref<number | null>(null);
-const isAudioPlaying = ref(false);
-const playingAudio = new Audio();
-playingAudio.preload = "metadata";
-
-playingAudio.addEventListener("pause", () => {
-  isAudioPlaying.value = false;
-});
-playingAudio.addEventListener("ended", () => {
-  playingAudioIndex.value = null;
-  isAudioPlaying.value = false;
-});
-
-function playAudio(index: number) {
-  void playingAudio.play().catch(() => {
-    if (playingAudioIndex.value !== index) return;
-    playingAudioIndex.value = null;
-    isAudioPlaying.value = false;
-  });
-}
-
-function toggleAudio(index: number, src: string) {
-  if (playingAudioIndex.value === index) {
-    if (isAudioPlaying.value) {
-      playingAudio.pause();
-    } else {
-      isAudioPlaying.value = true;
-      playAudio(index);
-    }
-    return;
-  }
-
-  playingAudio.pause();
-  playingAudio.src = src;
-  playingAudio.load();
-  playingAudioIndex.value = index;
-  isAudioPlaying.value = true;
-  playAudio(index);
-}
-
-function stopAudio() {
-  playingAudio.pause();
-  playingAudioIndex.value = null;
-  isAudioPlaying.value = false;
-}
-
 //分镜选择弹窗
 const storyboardDialogVisible = ref(false);
 //参考来源选择弹窗
@@ -373,12 +321,10 @@ function pickReferenceVideo(video: ReferenceVideoItem) {
   }
 }
 function splitImage(index: number) {
-  stopAudio();
   const list = [...imageList.value];
   list.splice(index, 1);
   imageList.value = list;
 }
-watch(imageList, console.log);
 </script>
 
 <style lang="scss" scoped>
@@ -463,58 +409,41 @@ watch(imageList, console.log);
       &.audioPreview {
         position: relative;
         background: var(--td-bg-color-secondarycontainer);
-        color: var(--td-brand-color);
-        padding: 4px;
+        color: var(--td-text-color-primary);
+        padding: 8px;
         box-sizing: border-box;
 
-        .audioPreviewStatic {
+        .audioPreviewHeader {
+          width: 100%;
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 4px;
-          transition: opacity 0.15s ease;
+          gap: 6px;
+          min-width: 0;
+          color: var(--td-brand-color);
         }
 
-        .audioPreviewButton {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 28px;
-          height: 28px;
-          transform: translate(-50%, -50%);
-          border: 0;
-          border-radius: 50%;
-          padding: 0;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          color: inherit;
-          background: var(--td-bg-color-container);
-          cursor: pointer;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.15s ease;
-
-          &:hover {
-            background: var(--td-brand-color-light);
-          }
+        .audioPreviewName {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: var(--td-text-color-primary);
+          font-size: 12px;
         }
 
-        &:hover {
-          .audioPreviewStatic {
-            opacity: 0;
-          }
-
-          .audioPreviewButton {
-            opacity: 1;
-            pointer-events: auto;
-          }
+        .audioPlayer {
+          width: 100%;
+          min-width: 0;
+          height: 36px;
         }
       }
       &.videoPreview {
         background: #000;
         overflow: hidden;
       }
+    }
+    &.audioUploadBtn {
+      width: 280px;
+      min-width: 280px;
     }
     .clearBtn {
       z-index: 999999999999999;
