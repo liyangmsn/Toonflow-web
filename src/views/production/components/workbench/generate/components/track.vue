@@ -23,7 +23,7 @@
           <!-- <t-button size="small" variant="outline" @click="importVideo">{{ $t("workbench.generate.importVideo") }}</t-button> -->
         </div>
       </div>
-      <div class="itemBox">
+      <div ref="trackScrollerRef" class="itemBox" @scroll="syncTrackScrollbar">
         <div
           class="item"
           :class="{ active: index === activeTrackIndex }"
@@ -69,6 +69,13 @@
           <i-plus size="36"></i-plus>
         </div>
       </div>
+      <div v-if="hasTrackOverflow" class="trackScrollbar" @pointerdown="handleTrackScrollbarPointerDown">
+        <div
+          class="trackScrollbarThumb"
+          :class="{ dragging: trackScrollbarDragging }"
+          :style="{ width: `${trackScrollbarThumbWidth}px`, transform: `translateX(${trackScrollbarThumbOffset}px)` }"
+          @pointerdown.stop="startTrackScrollbarDrag" />
+      </div>
     </t-card>
   </div>
 </template>
@@ -102,6 +109,15 @@ const emit = defineEmits<{
   saveImageList: [trackId: number];
 }>();
 const checkAll = ref(false); // 全选状态
+const trackScrollerRef = ref<HTMLElement | null>(null);
+const trackScrollbarWidth = ref(0);
+const trackScrollbarThumbWidth = ref(0);
+const trackScrollbarThumbOffset = ref(0);
+const trackScrollbarDragging = ref(false);
+const hasTrackOverflow = computed(() => trackScrollbarWidth.value > trackScrollbarThumbWidth.value);
+let trackScrollbarResizeObserver: ResizeObserver | null = null;
+let trackScrollbarDragStartX = 0;
+let trackScrollbarDragStartScrollLeft = 0;
 
 /** 视频封面缓存 src -> dataURL */
 const videoCoverMap = ref<Record<string, string>>({});
@@ -111,6 +127,73 @@ function getSelectedVideoSrc(track: TrackItem): string | null {
   if (!track.selectVideoId) return null;
   const video = track.videoList?.find((v) => v.id === track.selectVideoId);
   return video?.src || null;
+}
+
+function syncTrackScrollbar() {
+  const scroller = trackScrollerRef.value;
+  if (!scroller || !scroller.clientWidth || !scroller.scrollWidth) {
+    trackScrollbarWidth.value = 0;
+    trackScrollbarThumbWidth.value = 0;
+    trackScrollbarThumbOffset.value = 0;
+    return;
+  }
+
+  const viewportWidth = scroller.clientWidth;
+  const maxScrollLeft = Math.max(0, scroller.scrollWidth - viewportWidth);
+  const thumbWidth = Math.min(viewportWidth, Math.max(48, (viewportWidth / scroller.scrollWidth) * viewportWidth));
+  const maxThumbOffset = Math.max(0, viewportWidth - thumbWidth);
+
+  trackScrollbarWidth.value = viewportWidth;
+  trackScrollbarThumbWidth.value = thumbWidth;
+  trackScrollbarThumbOffset.value = maxScrollLeft > 0 ? (scroller.scrollLeft / maxScrollLeft) * maxThumbOffset : 0;
+}
+
+function setTrackScrollFromThumbOffset(offset: number) {
+  const scroller = trackScrollerRef.value;
+  const maxScrollLeft = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
+  const maxThumbOffset = Math.max(0, trackScrollbarWidth.value - trackScrollbarThumbWidth.value);
+  if (!scroller || maxScrollLeft <= 0 || maxThumbOffset <= 0) return;
+
+  const boundedOffset = Math.max(0, Math.min(maxThumbOffset, offset));
+  scroller.scrollLeft = (boundedOffset / maxThumbOffset) * maxScrollLeft;
+}
+
+function startTrackScrollbarDrag(event: PointerEvent) {
+  const scroller = trackScrollerRef.value;
+  if (!scroller || !hasTrackOverflow.value) return;
+
+  trackScrollbarDragging.value = true;
+  trackScrollbarDragStartX = event.clientX;
+  trackScrollbarDragStartScrollLeft = scroller.scrollLeft;
+  document.addEventListener("pointermove", handleTrackScrollbarPointerMove);
+  document.addEventListener("pointerup", stopTrackScrollbarDrag);
+  document.addEventListener("pointercancel", stopTrackScrollbarDrag);
+  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function handleTrackScrollbarPointerMove(event: PointerEvent) {
+  const scroller = trackScrollerRef.value;
+  const maxScrollLeft = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
+  const maxThumbOffset = Math.max(0, trackScrollbarWidth.value - trackScrollbarThumbWidth.value);
+  if (!scroller || maxScrollLeft <= 0 || maxThumbOffset <= 0) return;
+
+  const scrollDelta = event.clientX - trackScrollbarDragStartX;
+  scroller.scrollLeft = trackScrollbarDragStartScrollLeft + (scrollDelta / maxThumbOffset) * maxScrollLeft;
+}
+
+function stopTrackScrollbarDrag() {
+  trackScrollbarDragging.value = false;
+  document.removeEventListener("pointermove", handleTrackScrollbarPointerMove);
+  document.removeEventListener("pointerup", stopTrackScrollbarDrag);
+  document.removeEventListener("pointercancel", stopTrackScrollbarDrag);
+}
+
+function handleTrackScrollbarPointerDown(event: PointerEvent) {
+  const scrollbar = event.currentTarget as HTMLElement;
+  const offset = event.clientX - scrollbar.getBoundingClientRect().left - trackScrollbarThumbWidth.value / 2;
+  setTrackScrollFromThumbOffset(offset);
+  startTrackScrollbarDrag(event);
 }
 
 /** 截取视频首帧封面 */
@@ -421,6 +504,25 @@ watch(
   },
   { deep: true, immediate: true },
 );
+
+watch(
+  () => trackList.value.length,
+  () => nextTick(syncTrackScrollbar),
+  { immediate: true },
+);
+
+onMounted(() => {
+  nextTick(() => {
+    syncTrackScrollbar();
+    trackScrollbarResizeObserver = new ResizeObserver(syncTrackScrollbar);
+    if (trackScrollerRef.value) trackScrollbarResizeObserver.observe(trackScrollerRef.value);
+  });
+});
+
+onUnmounted(() => {
+  stopTrackScrollbarDrag();
+  trackScrollbarResizeObserver?.disconnect();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -449,12 +551,9 @@ watch(
     overflow-x: auto;
     gap: 10px;
     padding-bottom: 6px;
+    scrollbar-width: none;
     &::-webkit-scrollbar {
-      height: 6px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: #696969;
-      border-radius: 3px;
+      display: none;
     }
     .item {
       border-radius: 8px;
@@ -547,6 +646,37 @@ watch(
       pointer-events: none;
       user-select: none;
       display: block;
+    }
+  }
+  .trackScrollbar {
+    position: relative;
+    height: 16px;
+    margin-top: -2px;
+    border-radius: 999px;
+    background: var(--td-bg-color-secondarycontainer);
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+
+    .trackScrollbarThumb {
+      position: absolute;
+      top: 2px;
+      left: 0;
+      height: 12px;
+      border-radius: 999px;
+      background: #696969;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      cursor: grab;
+      transition: background-color 0.15s ease;
+
+      &:hover,
+      &.dragging {
+        background: var(--td-brand-color);
+      }
+
+      &.dragging {
+        cursor: grabbing;
+      }
     }
   }
 }

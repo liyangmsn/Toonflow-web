@@ -81,4 +81,8 @@ export default defineConfig({
   server: {
     port: 50188,
   },
+  build: {
+    outDir: fileURLToPath(new URL("../Toonflow-app/data/web", import.meta.url)),
+    emptyOutDir: true,
+  },
 });
