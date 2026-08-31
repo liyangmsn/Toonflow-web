@@ -1671,6 +1671,7 @@
       "batchGenerateVideo": "批量生成视频",
       "importVideo": "导入剪辑台",
       "emptyTrack": "第{index}段",
+      "dragToScroll": "按住左右拖动滚动轨道",
       "del": "删除",
       "delConfirm": "确认删除该段？",
       "selectSource": "选择来源",

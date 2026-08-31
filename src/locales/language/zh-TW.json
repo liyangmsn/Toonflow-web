@@ -1408,6 +1408,7 @@
       "batchGenerateVideo": "大量生成視頻",
       "importVideo": "導入剪輯台",
       "emptyTrack": "第{index}段",
+      "dragToScroll": "按住左右拖動滾動軌道",
       "del": "刪除",
       "delConfirm": "確認刪除該段？",
       "selectSource": "選擇來源",

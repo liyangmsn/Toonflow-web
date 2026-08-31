@@ -1575,6 +1575,7 @@
       "batchGenerateVideo": "Generate videos in batches",
       "importVideo": "Import to editing desk",
       "emptyTrack": "Paragraph {index}",
+      "dragToScroll": "Hold and drag horizontally to scroll the track",
       "del": "delete",
       "delConfirm": "Are you sure you want to delete this paragraph?",
       "selectSource": "Select source",

@@ -1403,6 +1403,7 @@
       "batchGenerateVideo": "バッチでビデオを生成する",
       "importVideo": "編集デスクにインポートする",
       "emptyTrack": "段落 {index}",
+      "dragToScroll": "押したまま左右にドラッグしてトラックをスクロール",
       "del": "消去",
       "delConfirm": "この段落を削除してもよろしいですか?",
       "selectSource": "ソースを選択",

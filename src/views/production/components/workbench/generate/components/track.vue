@@ -23,58 +23,65 @@
           <!-- <t-button size="small" variant="outline" @click="importVideo">{{ $t("workbench.generate.importVideo") }}</t-button> -->
         </div>
       </div>
-      <div ref="trackScrollerRef" class="itemBox" @scroll="syncTrackScrollbar">
-        <div
-          class="item"
-          :class="{ active: index === activeTrackIndex }"
-          v-for="(track, index) in trackList"
-          :key="track.id"
-          @click="changeIndex(index)">
-          <t-checkbox
-            class="trackCheck"
-            :checked="track.id != null && checkedTrackIds.includes(track.id)"
-            @click.stop
-            @change="(val: boolean) => toggleCheck(track.id, val)" />
-          <t-tag class="indexTag" size="small">#{{ index + 1 }}</t-tag>
-          <t-tag class="selectTag" theme="success" size="small" v-if="track.selectVideoId">已选择</t-tag>
-          <!-- 优先展示选中视频的首帧 -->
-          <div class="thumbGroup" v-if="track.selectVideoId && getSelectedVideoSrc(track)">
-            <img
-              v-if="videoCoverMap[getSelectedVideoSrc(track)!]"
-              class="thumb selectedVideoThumb"
-              :src="videoCoverMap[getSelectedVideoSrc(track)!]"
-              draggable="false" />
-            <div v-else class="thumb placeholder c">
-              <i-video size="24" />
+      <div class="trackArea" :class="{ dragging: trackScrollDragging }">
+        <div ref="trackScrollerRef" class="itemBox" @scroll="syncTrackScrollHandle">
+          <div
+            class="item"
+            :class="{ active: index === activeTrackIndex }"
+            v-for="(track, index) in trackList"
+            :key="track.id"
+            @click="changeIndex(index)">
+            <t-checkbox
+              class="trackCheck"
+              :checked="track.id != null && checkedTrackIds.includes(track.id)"
+              @click.stop
+              @change="(val: boolean) => toggleCheck(track.id, val)" />
+            <t-tag class="indexTag" size="small">#{{ index + 1 }}</t-tag>
+            <t-tag class="selectTag" theme="success" size="small" v-if="track.selectVideoId">已选择</t-tag>
+            <!-- 优先展示选中视频的首帧 -->
+            <div class="thumbGroup" v-if="track.selectVideoId && getSelectedVideoSrc(track)">
+              <img
+                v-if="videoCoverMap[getSelectedVideoSrc(track)!]"
+                class="thumb selectedVideoThumb"
+                :src="videoCoverMap[getSelectedVideoSrc(track)!]"
+                draggable="false" />
+              <div v-else class="thumb placeholder c">
+                <i-video size="24" />
+              </div>
+            </div>
+            <!-- 无选中视频时展示参考素材缩略图 -->
+            <div class="thumbGroup" v-else-if="track.medias.some((m) => m.src)">
+              <template v-for="(m, i) in track.medias" :key="i">
+                <template v-if="m.src">
+                  <t-image fit="cover" v-if="m.fileType === 'image'" :src="m.src" class="thumb" />
+                  <div v-else class="thumb placeholder c">
+                    <i-volume-notice v-if="m.fileType === 'audio'" size="20" />
+                    <i-video v-else size="24" />
+                  </div>
+                </template>
+              </template>
+            </div>
+            <span v-else class="emptyTrack">{{ $t("workbench.generate.emptyTrack", { index: index + 1 }) }}</span>
+            <div class="deleteBtn" @click.stop="confirmDeleteTrack(index)">
+              <i-close size="14" />
             </div>
           </div>
-          <!-- 无选中视频时展示参考素材缩略图 -->
-          <div class="thumbGroup" v-else-if="track.medias.some((m) => m.src)">
-            <template v-for="(m, i) in track.medias" :key="i">
-              <template v-if="m.src">
-                <t-image fit="cover" v-if="m.fileType === 'image'" :src="m.src" class="thumb" />
-                <div v-else class="thumb placeholder c">
-                  <i-volume-notice v-if="m.fileType === 'audio'" size="20" />
-                  <i-video v-else size="24" />
-                </div>
-              </template>
-            </template>
-          </div>
-          <span v-else class="emptyTrack">{{ $t("workbench.generate.emptyTrack", { index: index + 1 }) }}</span>
-          <div class="deleteBtn" @click.stop="confirmDeleteTrack(index)">
-            <i-close size="14" />
+          <div class="item addItem c" @click="addTrack">
+            <i-plus size="36"></i-plus>
           </div>
         </div>
-        <div class="item addItem c" @click="addTrack">
-          <i-plus size="36"></i-plus>
-        </div>
-      </div>
-      <div v-if="hasTrackOverflow" class="trackScrollbar" @pointerdown="handleTrackScrollbarPointerDown">
+        <!-- 悬浮拖动按钮：按住左右拖动即可滚动轨道内容 -->
         <div
-          class="trackScrollbarThumb"
-          :class="{ dragging: trackScrollbarDragging }"
-          :style="{ width: `${trackScrollbarThumbWidth}px`, transform: `translateX(${trackScrollbarThumbOffset}px)` }"
-          @pointerdown.stop="startTrackScrollbarDrag" />
+          v-if="hasTrackOverflow"
+          class="trackScrollHandle c"
+          :class="{ dragging: trackScrollDragging }"
+          :style="{ left: `${trackScrollHandleLeft}px` }"
+          :title="$t('workbench.generate.dragToScroll')"
+          @pointerdown="startTrackScrollDrag">
+          <i-left-two size="14" />
+          <i-drag size="16" />
+          <i-right-two size="14" />
+        </div>
       </div>
     </t-card>
   </div>
@@ -110,14 +117,22 @@ const emit = defineEmits<{
 }>();
 const checkAll = ref(false); // 全选状态
 const trackScrollerRef = ref<HTMLElement | null>(null);
-const trackScrollbarWidth = ref(0);
-const trackScrollbarThumbWidth = ref(0);
-const trackScrollbarThumbOffset = ref(0);
-const trackScrollbarDragging = ref(false);
-const hasTrackOverflow = computed(() => trackScrollbarWidth.value > trackScrollbarThumbWidth.value);
-let trackScrollbarResizeObserver: ResizeObserver | null = null;
-let trackScrollbarDragStartX = 0;
-let trackScrollbarDragStartScrollLeft = 0;
+/** 悬浮拖动按钮的宽度，需与样式保持一致 */
+const HANDLE_WIDTH = 64;
+/** 按钮距容器左右边缘的最小间距 */
+const HANDLE_EDGE_GAP = 8;
+const trackViewportWidth = ref(0);
+const trackMaxScrollLeft = ref(0);
+const trackScrollProgress = ref(0);
+const trackScrollDragging = ref(false);
+const hasTrackOverflow = computed(() => trackMaxScrollLeft.value > 1);
+/** 按钮可移动的最大水平位移 */
+const trackHandleTravel = computed(() => Math.max(0, trackViewportWidth.value - HANDLE_WIDTH - HANDLE_EDGE_GAP * 2));
+/** 按钮当前的 left 值，随滚动进度移动 */
+const trackScrollHandleLeft = computed(() => HANDLE_EDGE_GAP + trackScrollProgress.value * trackHandleTravel.value);
+let trackScrollResizeObserver: ResizeObserver | null = null;
+let trackScrollDragStartX = 0;
+let trackScrollDragStartScrollLeft = 0;
 
 /** 视频封面缓存 src -> dataURL */
 const videoCoverMap = ref<Record<string, string>>({});
@@ -129,71 +144,52 @@ function getSelectedVideoSrc(track: TrackItem): string | null {
   return video?.src || null;
 }
 
-function syncTrackScrollbar() {
+/** 同步悬浮按钮位置与轨道可滚动范围 */
+function syncTrackScrollHandle() {
   const scroller = trackScrollerRef.value;
-  if (!scroller || !scroller.clientWidth || !scroller.scrollWidth) {
-    trackScrollbarWidth.value = 0;
-    trackScrollbarThumbWidth.value = 0;
-    trackScrollbarThumbOffset.value = 0;
+  if (!scroller || !scroller.clientWidth) {
+    trackViewportWidth.value = 0;
+    trackMaxScrollLeft.value = 0;
+    trackScrollProgress.value = 0;
     return;
   }
 
-  const viewportWidth = scroller.clientWidth;
-  const maxScrollLeft = Math.max(0, scroller.scrollWidth - viewportWidth);
-  const thumbWidth = Math.min(viewportWidth, Math.max(48, (viewportWidth / scroller.scrollWidth) * viewportWidth));
-  const maxThumbOffset = Math.max(0, viewportWidth - thumbWidth);
-
-  trackScrollbarWidth.value = viewportWidth;
-  trackScrollbarThumbWidth.value = thumbWidth;
-  trackScrollbarThumbOffset.value = maxScrollLeft > 0 ? (scroller.scrollLeft / maxScrollLeft) * maxThumbOffset : 0;
+  const maxScrollLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+  trackViewportWidth.value = scroller.clientWidth;
+  trackMaxScrollLeft.value = maxScrollLeft;
+  trackScrollProgress.value = maxScrollLeft > 0 ? Math.min(1, Math.max(0, scroller.scrollLeft / maxScrollLeft)) : 0;
 }
 
-function setTrackScrollFromThumbOffset(offset: number) {
-  const scroller = trackScrollerRef.value;
-  const maxScrollLeft = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
-  const maxThumbOffset = Math.max(0, trackScrollbarWidth.value - trackScrollbarThumbWidth.value);
-  if (!scroller || maxScrollLeft <= 0 || maxThumbOffset <= 0) return;
-
-  const boundedOffset = Math.max(0, Math.min(maxThumbOffset, offset));
-  scroller.scrollLeft = (boundedOffset / maxThumbOffset) * maxScrollLeft;
-}
-
-function startTrackScrollbarDrag(event: PointerEvent) {
+/** 按住悬浮按钮开始拖动 */
+function startTrackScrollDrag(event: PointerEvent) {
   const scroller = trackScrollerRef.value;
   if (!scroller || !hasTrackOverflow.value) return;
 
-  trackScrollbarDragging.value = true;
-  trackScrollbarDragStartX = event.clientX;
-  trackScrollbarDragStartScrollLeft = scroller.scrollLeft;
-  document.addEventListener("pointermove", handleTrackScrollbarPointerMove);
-  document.addEventListener("pointerup", stopTrackScrollbarDrag);
-  document.addEventListener("pointercancel", stopTrackScrollbarDrag);
+  trackScrollDragging.value = true;
+  trackScrollDragStartX = event.clientX;
+  trackScrollDragStartScrollLeft = scroller.scrollLeft;
+  document.addEventListener("pointermove", handleTrackScrollDragMove);
+  document.addEventListener("pointerup", stopTrackScrollDrag);
+  document.addEventListener("pointercancel", stopTrackScrollDrag);
   (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   event.preventDefault();
 }
 
-function handleTrackScrollbarPointerMove(event: PointerEvent) {
+/** 拖动过程中按位移比例滚动内容 */
+function handleTrackScrollDragMove(event: PointerEvent) {
   const scroller = trackScrollerRef.value;
-  const maxScrollLeft = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
-  const maxThumbOffset = Math.max(0, trackScrollbarWidth.value - trackScrollbarThumbWidth.value);
-  if (!scroller || maxScrollLeft <= 0 || maxThumbOffset <= 0) return;
+  const travel = trackHandleTravel.value;
+  if (!scroller || trackMaxScrollLeft.value <= 0 || travel <= 0) return;
 
-  const scrollDelta = event.clientX - trackScrollbarDragStartX;
-  scroller.scrollLeft = trackScrollbarDragStartScrollLeft + (scrollDelta / maxThumbOffset) * maxScrollLeft;
+  const delta = event.clientX - trackScrollDragStartX;
+  scroller.scrollLeft = trackScrollDragStartScrollLeft + (delta / travel) * trackMaxScrollLeft.value;
 }
 
-function stopTrackScrollbarDrag() {
-  trackScrollbarDragging.value = false;
-  document.removeEventListener("pointermove", handleTrackScrollbarPointerMove);
-  document.removeEventListener("pointerup", stopTrackScrollbarDrag);
-  document.removeEventListener("pointercancel", stopTrackScrollbarDrag);
-}
-
-function handleTrackScrollbarPointerDown(event: PointerEvent) {
-  const scrollbar = event.currentTarget as HTMLElement;
-  const offset = event.clientX - scrollbar.getBoundingClientRect().left - trackScrollbarThumbWidth.value / 2;
-  setTrackScrollFromThumbOffset(offset);
-  startTrackScrollbarDrag(event);
+function stopTrackScrollDrag() {
+  trackScrollDragging.value = false;
+  document.removeEventListener("pointermove", handleTrackScrollDragMove);
+  document.removeEventListener("pointerup", stopTrackScrollDrag);
+  document.removeEventListener("pointercancel", stopTrackScrollDrag);
 }
 
 /** 截取视频首帧封面 */
@@ -507,21 +503,21 @@ watch(
 
 watch(
   () => trackList.value.length,
-  () => nextTick(syncTrackScrollbar),
+  () => nextTick(syncTrackScrollHandle),
   { immediate: true },
 );
 
 onMounted(() => {
   nextTick(() => {
-    syncTrackScrollbar();
-    trackScrollbarResizeObserver = new ResizeObserver(syncTrackScrollbar);
-    if (trackScrollerRef.value) trackScrollbarResizeObserver.observe(trackScrollerRef.value);
+    syncTrackScrollHandle();
+    trackScrollResizeObserver = new ResizeObserver(syncTrackScrollHandle);
+    if (trackScrollerRef.value) trackScrollResizeObserver.observe(trackScrollerRef.value);
   });
 });
 
 onUnmounted(() => {
-  stopTrackScrollbarDrag();
-  trackScrollbarResizeObserver?.disconnect();
+  stopTrackScrollDrag();
+  trackScrollResizeObserver?.disconnect();
 });
 </script>
 
@@ -542,10 +538,75 @@ onUnmounted(() => {
       gap: 8px;
     }
   }
-  .itemBox {
-    height: 150px;
+  .trackArea {
+    position: relative;
     flex: 1;
     min-height: 0;
+    width: 100%;
+
+    // 拖动中显示按钮并保持抓取光标
+    &.dragging {
+      cursor: grabbing;
+      .trackScrollHandle {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    &:hover .trackScrollHandle {
+      opacity: 0.85;
+      pointer-events: auto;
+    }
+  }
+  .trackScrollHandle {
+    position: absolute;
+    bottom: 6px;
+    width: 64px;
+    height: 26px;
+    border-radius: 6px;
+    gap: 2px;
+    background: var(--td-bg-color-container);
+    border: 1px solid var(--td-component-border);
+    color: var(--td-text-color-secondary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    cursor: grab;
+    // 默认隐藏且不拦截点击，避免遮挡下方轨道卡片
+    opacity: 0;
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    z-index: 3;
+    transition:
+      opacity 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease;
+
+    // 向外扩大命中范围，视觉尺寸不变
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -8px -10px;
+    }
+
+    // 图标不参与命中，交互统一由外层按钮处理
+    :deep(.i-icon) {
+      pointer-events: none;
+      display: flex;
+    }
+
+    &:hover,
+    &.dragging {
+      background: var(--td-brand-color);
+      border-color: var(--td-brand-color);
+      color: #fff;
+    }
+
+    &.dragging {
+      cursor: grabbing;
+    }
+  }
+  .itemBox {
+    height: 150px;
     width: 100%;
     display: flex;
     overflow-x: auto;
@@ -646,37 +707,6 @@ onUnmounted(() => {
       pointer-events: none;
       user-select: none;
       display: block;
-    }
-  }
-  .trackScrollbar {
-    position: relative;
-    height: 16px;
-    margin-top: -2px;
-    border-radius: 999px;
-    background: var(--td-bg-color-secondarycontainer);
-    cursor: pointer;
-    touch-action: none;
-    user-select: none;
-
-    .trackScrollbarThumb {
-      position: absolute;
-      top: 2px;
-      left: 0;
-      height: 12px;
-      border-radius: 999px;
-      background: #696969;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-      cursor: grab;
-      transition: background-color 0.15s ease;
-
-      &:hover,
-      &.dragging {
-        background: var(--td-brand-color);
-      }
-
-      &.dragging {
-        cursor: grabbing;
-      }
     }
   }
 }
