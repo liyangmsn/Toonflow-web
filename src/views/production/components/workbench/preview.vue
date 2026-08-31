@@ -139,37 +139,41 @@
           {{ $t("workbench.production.preview.exportImage") }}
         </t-button>
       </div>
-      <div class="shotListWrapper" ref="shotListWrapperRef">
-        <VueDraggable
-          v-model="shotList"
-          :animation="150"
-          ghostClass="shotGhost"
-          dragClass="shotDrag"
-          :scroll="shotListWrapperRef"
-          :scrollSensitivity="80"
-          :scrollSpeed="10"
-          :forceFallback="true"
-          target=".shotList"
-          @start="isDragging = true"
-          @end="onDragEnd">
-          <TransitionGroup type="transition" tag="div" :name="!isDragging ? 'shot-flip' : undefined" class="shotList">
-            <div
-              v-for="(shot, index) in shotList"
-              :key="shot.id"
-              class="shotItem"
-              :class="{ active: currentShotIndex === index }"
-              @click="selectShot(index)">
-              <t-checkbox v-model="shot.selected" class="shotCheckbox" @click.stop @mousedown.stop />
-              <div class="shotImageWrapper">
-                <img v-if="shot.filePath" :src="shot.filePath" :alt="shot.description" class="shotImage" />
-                <div v-else class="shotPlaceholder">
-                  <i-pic theme="outline" size="24" fill="#999" />
+      <div class="shotListArea__scrollBox">
+        <div class="shotListWrapper" ref="shotListWrapperRef">
+          <VueDraggable
+            v-model="shotList"
+            :animation="150"
+            ghostClass="shotGhost"
+            dragClass="shotDrag"
+            :scroll="shotListWrapperRef"
+            :scrollSensitivity="80"
+            :scrollSpeed="10"
+            :forceFallback="true"
+            target=".shotList"
+            @start="isDragging = true"
+            @end="onDragEnd">
+            <TransitionGroup type="transition" tag="div" :name="!isDragging ? 'shot-flip' : undefined" class="shotList">
+              <div
+                v-for="(shot, index) in shotList"
+                :key="shot.id"
+                class="shotItem"
+                :class="{ active: currentShotIndex === index }"
+                @click="selectShot(index)">
+                <t-checkbox v-model="shot.selected" class="shotCheckbox" @click.stop @mousedown.stop />
+                <div class="shotImageWrapper">
+                  <img v-if="shot.filePath" :src="shot.filePath" :alt="shot.description" class="shotImage" />
+                  <div v-else class="shotPlaceholder">
+                    <i-pic theme="outline" size="24" fill="#999" />
+                  </div>
+                  <t-tag class="shotNumber" size="small" variant="dark">#{{ shot.id }}</t-tag>
                 </div>
-                <t-tag class="shotNumber" size="small" variant="dark">#{{ shot.id }}</t-tag>
               </div>
-            </div>
-          </TransitionGroup>
-        </VueDraggable>
+            </TransitionGroup>
+          </VueDraggable>
+        </div>
+        <!-- 悬浮拖动按钮：按住左右拖动即可滚动分镜列表 -->
+        <dragScrollHandle ref="shotScrollHandleRef" :scroller="shotListWrapperRef" />
       </div>
     </div>
   </div>
@@ -183,6 +187,7 @@ import { DialogPlugin } from "tdesign-vue-next";
 import axios from "@/utils/axios";
 import JSZip from "jszip";
 import projectStore from "@/stores/project";
+import dragScrollHandle from "@/components/dragScrollHandle.vue";
 const { project } = storeToRefs(projectStore());
 interface ShotCharacter {
   name: string;
@@ -228,8 +233,15 @@ const currentCharacters = computed(() => currentShot.value?.characters || []);
 const currentShotIndex = ref(0);
 const selectAll = ref(false);
 const shotListWrapperRef = ref<HTMLElement>();
+const shotScrollHandleRef = ref<{ sync: () => void } | null>(null);
 const progressBarRef = ref<HTMLElement>();
 const isDragging = ref(false);
+
+// 分镜数量变化后重新计算悬浮拖动按钮的可滚动范围
+watch(
+  () => shotList.value.length,
+  () => nextTick(() => shotScrollHandleRef.value?.sync()),
+);
 
 // 播放状态
 const isPlaying = ref(false);
@@ -731,14 +743,18 @@ function getFileExtension(path: string) {
       }
     }
 
+    // 悬浮拖动按钮的定位参照
+    .shotListArea__scrollBox {
+      position: relative;
+    }
+
     .shotListWrapper {
       overflow-x: auto;
+      padding-bottom: 6px;
+      // 隐藏原生滚动条，改由悬浮拖动按钮控制
+      scrollbar-width: none;
       &::-webkit-scrollbar {
-        height: 6px;
-      }
-      &::-webkit-scrollbar-thumb {
-        background: var(--td-scrollbar-color);
-        border-radius: 3px;
+        display: none;
       }
 
       .shotList {

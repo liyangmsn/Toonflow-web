@@ -23,8 +23,8 @@
           <!-- <t-button size="small" variant="outline" @click="importVideo">{{ $t("workbench.generate.importVideo") }}</t-button> -->
         </div>
       </div>
-      <div class="trackArea" :class="{ dragging: trackScrollDragging }">
-        <div ref="trackScrollerRef" class="itemBox" @scroll="syncTrackScrollHandle">
+      <div class="trackArea">
+        <div ref="trackScrollerRef" class="itemBox">
           <div
             class="item"
             :class="{ active: index === activeTrackIndex }"
@@ -71,17 +71,7 @@
           </div>
         </div>
         <!-- 悬浮拖动按钮：按住左右拖动即可滚动轨道内容 -->
-        <div
-          v-if="hasTrackOverflow"
-          class="trackScrollHandle c"
-          :class="{ dragging: trackScrollDragging }"
-          :style="{ left: `${trackScrollHandleLeft}px` }"
-          :title="$t('workbench.generate.dragToScroll')"
-          @pointerdown="startTrackScrollDrag">
-          <i-left-two size="14" />
-          <i-drag size="16" />
-          <i-right-two size="14" />
-        </div>
+        <dragScrollHandle ref="trackScrollHandleRef" :scroller="trackScrollerRef" />
       </div>
     </t-card>
   </div>
@@ -94,6 +84,7 @@ import axios from "@/utils/axios";
 import projectStore from "@/stores/project";
 import JSZip from "jszip";
 import settingStore from "@/stores/setting";
+import dragScrollHandle from "@/components/dragScrollHandle.vue";
 
 const { otherSetting } = storeToRefs(settingStore());
 const { project } = storeToRefs(projectStore());
@@ -117,22 +108,7 @@ const emit = defineEmits<{
 }>();
 const checkAll = ref(false); // 全选状态
 const trackScrollerRef = ref<HTMLElement | null>(null);
-/** 悬浮拖动按钮的宽度，需与样式保持一致 */
-const HANDLE_WIDTH = 64;
-/** 按钮距容器左右边缘的最小间距 */
-const HANDLE_EDGE_GAP = 8;
-const trackViewportWidth = ref(0);
-const trackMaxScrollLeft = ref(0);
-const trackScrollProgress = ref(0);
-const trackScrollDragging = ref(false);
-const hasTrackOverflow = computed(() => trackMaxScrollLeft.value > 1);
-/** 按钮可移动的最大水平位移 */
-const trackHandleTravel = computed(() => Math.max(0, trackViewportWidth.value - HANDLE_WIDTH - HANDLE_EDGE_GAP * 2));
-/** 按钮当前的 left 值，随滚动进度移动 */
-const trackScrollHandleLeft = computed(() => HANDLE_EDGE_GAP + trackScrollProgress.value * trackHandleTravel.value);
-let trackScrollResizeObserver: ResizeObserver | null = null;
-let trackScrollDragStartX = 0;
-let trackScrollDragStartScrollLeft = 0;
+const trackScrollHandleRef = ref<{ sync: () => void } | null>(null);
 
 /** 视频封面缓存 src -> dataURL */
 const videoCoverMap = ref<Record<string, string>>({});
@@ -142,54 +118,6 @@ function getSelectedVideoSrc(track: TrackItem): string | null {
   if (!track.selectVideoId) return null;
   const video = track.videoList?.find((v) => v.id === track.selectVideoId);
   return video?.src || null;
-}
-
-/** 同步悬浮按钮位置与轨道可滚动范围 */
-function syncTrackScrollHandle() {
-  const scroller = trackScrollerRef.value;
-  if (!scroller || !scroller.clientWidth) {
-    trackViewportWidth.value = 0;
-    trackMaxScrollLeft.value = 0;
-    trackScrollProgress.value = 0;
-    return;
-  }
-
-  const maxScrollLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-  trackViewportWidth.value = scroller.clientWidth;
-  trackMaxScrollLeft.value = maxScrollLeft;
-  trackScrollProgress.value = maxScrollLeft > 0 ? Math.min(1, Math.max(0, scroller.scrollLeft / maxScrollLeft)) : 0;
-}
-
-/** 按住悬浮按钮开始拖动 */
-function startTrackScrollDrag(event: PointerEvent) {
-  const scroller = trackScrollerRef.value;
-  if (!scroller || !hasTrackOverflow.value) return;
-
-  trackScrollDragging.value = true;
-  trackScrollDragStartX = event.clientX;
-  trackScrollDragStartScrollLeft = scroller.scrollLeft;
-  document.addEventListener("pointermove", handleTrackScrollDragMove);
-  document.addEventListener("pointerup", stopTrackScrollDrag);
-  document.addEventListener("pointercancel", stopTrackScrollDrag);
-  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-  event.preventDefault();
-}
-
-/** 拖动过程中按位移比例滚动内容 */
-function handleTrackScrollDragMove(event: PointerEvent) {
-  const scroller = trackScrollerRef.value;
-  const travel = trackHandleTravel.value;
-  if (!scroller || trackMaxScrollLeft.value <= 0 || travel <= 0) return;
-
-  const delta = event.clientX - trackScrollDragStartX;
-  scroller.scrollLeft = trackScrollDragStartScrollLeft + (delta / travel) * trackMaxScrollLeft.value;
-}
-
-function stopTrackScrollDrag() {
-  trackScrollDragging.value = false;
-  document.removeEventListener("pointermove", handleTrackScrollDragMove);
-  document.removeEventListener("pointerup", stopTrackScrollDrag);
-  document.removeEventListener("pointercancel", stopTrackScrollDrag);
 }
 
 /** 截取视频首帧封面 */
@@ -501,24 +429,11 @@ watch(
   { deep: true, immediate: true },
 );
 
+// 轨道数量变化后重新计算可滚动范围
 watch(
   () => trackList.value.length,
-  () => nextTick(syncTrackScrollHandle),
-  { immediate: true },
+  () => nextTick(() => trackScrollHandleRef.value?.sync()),
 );
-
-onMounted(() => {
-  nextTick(() => {
-    syncTrackScrollHandle();
-    trackScrollResizeObserver = new ResizeObserver(syncTrackScrollHandle);
-    if (trackScrollerRef.value) trackScrollResizeObserver.observe(trackScrollerRef.value);
-  });
-});
-
-onUnmounted(() => {
-  stopTrackScrollDrag();
-  trackScrollResizeObserver?.disconnect();
-});
 </script>
 
 <style lang="scss" scoped>
@@ -543,67 +458,6 @@ onUnmounted(() => {
     flex: 1;
     min-height: 0;
     width: 100%;
-
-    // 拖动中显示按钮并保持抓取光标
-    &.dragging {
-      cursor: grabbing;
-      .trackScrollHandle {
-        opacity: 1;
-        pointer-events: auto;
-      }
-    }
-
-    &:hover .trackScrollHandle {
-      opacity: 0.85;
-      pointer-events: auto;
-    }
-  }
-  .trackScrollHandle {
-    position: absolute;
-    bottom: 6px;
-    width: 64px;
-    height: 26px;
-    border-radius: 6px;
-    gap: 2px;
-    background: var(--td-bg-color-container);
-    border: 1px solid var(--td-component-border);
-    color: var(--td-text-color-secondary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-    cursor: grab;
-    // 默认隐藏且不拦截点击，避免遮挡下方轨道卡片
-    opacity: 0;
-    pointer-events: none;
-    touch-action: none;
-    user-select: none;
-    z-index: 3;
-    transition:
-      opacity 0.15s ease,
-      background-color 0.15s ease,
-      color 0.15s ease;
-
-    // 向外扩大命中范围，视觉尺寸不变
-    &::before {
-      content: "";
-      position: absolute;
-      inset: -8px -10px;
-    }
-
-    // 图标不参与命中，交互统一由外层按钮处理
-    :deep(.i-icon) {
-      pointer-events: none;
-      display: flex;
-    }
-
-    &:hover,
-    &.dragging {
-      background: var(--td-brand-color);
-      border-color: var(--td-brand-color);
-      color: #fff;
-    }
-
-    &.dragging {
-      cursor: grabbing;
-    }
   }
   .itemBox {
     height: 150px;

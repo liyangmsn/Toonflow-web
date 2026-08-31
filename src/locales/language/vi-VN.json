@@ -1,5 +1,8 @@
 {
   "components": {
+    "dragScrollHandle": {
+      "tip": "Giữ và kéo ngang để cuộn nội dung"
+    },
     "editMdPreivew": {
       "title": "Chỉnh sửa",
       "confirm": "Lưu",
@@ -1394,7 +1397,6 @@
       "batchGenerateVideo": "Tạo video hàng loạt",
       "importVideo": "Nhập vào bàn chỉnh sửa",
       "emptyTrack": "Đoạn {index}",
-      "dragToScroll": "Giữ và kéo ngang để cuộn track",
       "del": "xóa bỏ",
       "delConfirm": "Bạn có chắc chắn muốn xóa đoạn này?",
       "selectSource": "Chọn nguồn",

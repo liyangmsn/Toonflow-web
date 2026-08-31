@@ -1,5 +1,8 @@
 {
   "components": {
+    "dragScrollHandle": {
+      "tip": "กดแล้วลากซ้ายขวาเพื่อเลื่อนเนื้อหา"
+    },
     "editMdPreivew": {
       "title": "แก้ไข",
       "confirm": "บันทึก",
@@ -1404,7 +1407,6 @@
       "batchGenerateVideo": "สร้างวิดีโอเป็นชุด",
       "importVideo": "นำเข้าไปยังโต๊ะแก้ไข",
       "emptyTrack": "ย่อหน้า {index}",
-      "dragToScroll": "กดแล้วลากซ้ายขวาเพื่อเลื่อนแทร็ก",
       "del": "ลบ",
       "delConfirm": "คุณแน่ใจหรือไม่ว่าต้องการลบย่อหน้านี้",
       "selectSource": "เลือกแหล่งที่มา",
