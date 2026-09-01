@@ -44,6 +44,17 @@
                 { label: '4K', value: '4K' },
               ]"></t-select>
           </t-form-item>
+          <t-form-item :label="$t('workbench.cornerScape.imageCount')">
+            <t-input-number
+              v-model="imageCount"
+              theme="column"
+              :min="1"
+              :max="10"
+              :allowInputOverLimit="false"
+              style="width: 100%"
+              :suffix="$t('workbench.cornerScape.imageCountSuffix')"
+              :placeholder="$t('workbench.cornerScape.imageCountPh')" />
+          </t-form-item>
           <t-form-item :label="$t('workbench.cornerScape.textPromptInput')">
             <t-textarea v-model="otherTextPrompt" :placeholder="$t('workbench.cornerScape.textPromptPh')"></t-textarea>
           </t-form-item>
@@ -197,6 +208,17 @@
           <t-form-item :label="$t('workbench.cornerScape.resolution')">
             <t-select v-model="editForm.resolution" :placeholder="$t('workbench.cornerScape.resolutionPh')" :options="resolutionOptions" />
           </t-form-item>
+          <t-form-item :label="$t('workbench.cornerScape.imageCount')">
+            <t-input-number
+              v-model="editForm.imageCount"
+              theme="column"
+              :min="1"
+              :max="10"
+              :allowInputOverLimit="false"
+              style="width: 100%"
+              :suffix="$t('workbench.cornerScape.imageCountSuffix')"
+              :placeholder="$t('workbench.cornerScape.imageCountPh')" />
+          </t-form-item>
           <t-form-item :label="$t('workbench.cornerScape.descriptionSuffix')">
             <div class="drawerDescription">{{ currentItem.describe || "—" }}</div>
           </t-form-item>
@@ -284,6 +306,8 @@ const checkboxValue = ref<string[]>([]);
 const { project } = storeToRefs(projectStore());
 const selectValue = ref(project.value?.imageModel ?? "");
 const resolution = ref("1K");
+// 每个资产生成的图片数量，默认 1
+const imageCount = ref(1);
 const otherTextPrompt = ref("");
 const resolutionOptions = [
   { label: "1K", value: "1K" },
@@ -475,6 +499,7 @@ const editForm = reactive({
   model: "",
   type: "",
   resolution: "",
+  imageCount: 1,
   prompt: "",
   name: "",
   describe: "",
@@ -492,6 +517,7 @@ async function openDrawer(item: DataItem) {
   editForm.model = item.model || "";
   currentItem.value = item;
   editForm.resolution = item.resolution || "";
+  editForm.imageCount = imageCount.value;
   editForm.prompt = item.prompt || "";
   editForm.describe = item.describe || "";
   editForm.promptState = item.promptState;
@@ -555,6 +581,7 @@ function regenerateItem() {
         model: selectValue.value,
         id: item.id,
         resolution: editForm.resolution,
+        imageCount: editForm.imageCount,
         concurrentCount: 1,
       },
       { signal: controller.signal },
@@ -723,7 +750,11 @@ async function batchGenerationImage() {
   items.forEach((item) => setItemState(item.id, "生成中"));
 
   window.$message.success(
-    $t("workbench.cornerScape.msg.batchStarted", { count: items.length, concurrent: otherSetting.value.assetsBatchGenereateSize }),
+    $t("workbench.cornerScape.msg.batchStarted", {
+      count: items.length,
+      concurrent: otherSetting.value.assetsBatchGenereateSize,
+      images: items.length * imageCount.value,
+    }),
   );
 
   try {
@@ -731,6 +762,7 @@ async function batchGenerationImage() {
       projectId: project.value?.id,
       model: selectValue.value,
       resolution: resolution.value,
+      imageCount: imageCount.value,
       concurrentCount: otherSetting.value.assetsBatchGenereateSize,
       items: items.map((item) => ({
         id: item.id,

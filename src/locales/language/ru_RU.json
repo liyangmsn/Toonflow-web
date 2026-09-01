@@ -751,7 +751,7 @@
         "promptGenSuccess": "Промпт успешно сгенерирован",
         "polishFailed": "Не удалось улучшить, попробуйте снова",
         "selectAtLeastOne": "Выберите хотя бы один ассет для пакетной генерации",
-        "batchStarted": "Начата пакетная генерация. Всего: {count}, Потоков: {concurrent}",
+        "batchStarted": "Пакетная генерация запущена: {count} ресурсов / {images} изображений, параллельно {concurrent}",
         "batchItemFailed": "Ошибка генерации {name}: {error}",
         "batchComplete": "Пакетная генерация завершена",
         "batchFailed": "Генерация пакета не удалась",
@@ -772,7 +772,10 @@
       "cancelGeneration": "Отменить генерацию",
       "selectGenerating": "Выберите создаваемый элемент",
       "noGenerating": "Данные не генерируются",
-      "checkNumber": "Выберите количество"
+      "checkNumber": "Выберите количество",
+      "imageCount": "Количество изображений",
+      "imageCountSuffix": "шт.",
+      "imageCountPh": "Сколько изображений генерировать для каждого ресурса"
     },
     "script": {
       "searchPlaceholder": "Поиск по названию сценария...",

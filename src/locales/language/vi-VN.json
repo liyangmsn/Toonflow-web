@@ -742,7 +742,7 @@
         "promptGenSuccess": "Tạo lời nhắc thành công",
         "polishFailed": "Trau chuốt thất bại, vui lòng thử lại",
         "selectAtLeastOne": "Vui lòng chọn ít nhất một tài nguyên để tạo hàng loạt",
-        "batchStarted": "Bắt đầu tạo hàng loạt, tổng cộng {count} mục, số luồng đồng thời {concurrent}",
+        "batchStarted": "Bắt đầu tạo hàng loạt: {count} tài nguyên / {images} ảnh, đồng thời {concurrent}",
         "batchItemFailed": "Tạo {name} thất bại: {error}",
         "batchComplete": "Tạo hàng loạt hoàn tất",
         "batchFailed": "Tạo hàng loạt không thành công",
@@ -763,7 +763,10 @@
       "cancelGeneration": "Hủy tạo",
       "selectGenerating": "Chọn mục đang được tạo",
       "noGenerating": "Không có dữ liệu nào được tạo",
-      "checkNumber": "Chọn số lượng"
+      "checkNumber": "Chọn số lượng",
+      "imageCount": "Số lượng ảnh",
+      "imageCountSuffix": "ảnh",
+      "imageCountPh": "Số ảnh tạo cho mỗi tài nguyên"
     },
     "script": {
       "searchPlaceholder": "Tìm kiếm tên kịch bản...",

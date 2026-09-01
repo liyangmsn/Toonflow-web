@@ -752,7 +752,7 @@
         "promptGenSuccess": "สร้างพรอมต์สำเร็จ",
         "polishFailed": "ขัดเกลาข้อความล้มเหลว โปรดลองอีกครั้ง",
         "selectAtLeastOne": "โปรดเลือกสินทรัพย์อย่างน้อยหนึ่งรายการเพื่อสร้างเป็นชุด",
-        "batchStarted": "เริ่มการสร้างเป็นชุดแล้ว จำนวน {count} รายการ ทำพร้อมกัน {concurrent} รายการ",
+        "batchStarted": "เริ่มสร้างแบบกลุ่ม รวม {count} สินทรัพย์ / {images} ภาพ ประมวลผลพร้อมกัน {concurrent}",
         "batchItemFailed": "สร้าง {name} ล้มเหลว: {error}",
         "batchComplete": "การสร้างเป็นชุดเสร็จสมบูรณ์",
         "batchFailed": "การสร้างแบทช์ล้มเหลว",
@@ -773,7 +773,10 @@
       "cancelGeneration": "ยกเลิกการสร้าง",
       "selectGenerating": "เลือกรายการที่กำลังสร้าง",
       "noGenerating": "ไม่มีการสร้างข้อมูล",
-      "checkNumber": "เลือกปริมาณ"
+      "checkNumber": "เลือกปริมาณ",
+      "imageCount": "จำนวนภาพที่สร้าง",
+      "imageCountSuffix": "ภาพ",
+      "imageCountPh": "จำนวนภาพที่สร้างต่อหนึ่งสินทรัพย์"
     },
     "script": {
       "searchPlaceholder": "ค้นหาชื่อบทภาพยนตร์...",

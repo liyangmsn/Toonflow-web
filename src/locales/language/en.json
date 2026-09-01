@@ -906,7 +906,7 @@
         "promptGenSuccess": "Prompt generated successfully",
         "polishFailed": "Failed to polish, please try again",
         "selectAtLeastOne": "Select at least one asset for batch generation",
-        "batchStarted": "Batch generation started. Total: {count}, Concurrency: {concurrent}",
+        "batchStarted": "Batch generation started: {count} assets / {images} images, concurrency {concurrent}",
         "batchItemFailed": "{name} generation failed: {error}",
         "batchComplete": "Batch generation completed",
         "batchFailed": "Batch generation failed",
@@ -927,7 +927,10 @@
       "cancelGeneration": "Cancel generation",
       "selectGenerating": "Select the item being generated",
       "noGenerating": "No data being generated",
-      "checkNumber": "Select quantity"
+      "checkNumber": "Select quantity",
+      "imageCount": "Images per asset",
+      "imageCountSuffix": "images",
+      "imageCountPh": "Number of images generated per asset"
     },
     "script": {
       "searchPlaceholder": "Search script names...",

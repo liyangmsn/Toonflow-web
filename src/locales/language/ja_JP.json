@@ -751,7 +751,7 @@
         "promptGenSuccess": "プロンプトの生成に成功しました",
         "polishFailed": "推敲に失敗しました。再試行してください",
         "selectAtLeastOne": "一括生成するアセットを少なくとも1つ選択してください",
-        "batchStarted": "一括生成を開始しました。全 {count} 件、同時実行数 {concurrent}",
+        "batchStarted": "一括生成を開始しました。アセット {count} 件 / 画像 {images} 枚、並列数 {concurrent}",
         "batchItemFailed": "{name} の生成に失敗しました：{error}",
         "batchComplete": "一括生成が完了しました",
         "batchFailed": "バッチ生成に失敗しました",
@@ -772,7 +772,10 @@
       "cancelGeneration": "生成をキャンセルする",
       "selectGenerating": "生成されるアイテムを選択します",
       "noGenerating": "データは生成されていません",
-      "checkNumber": "数量を選択してください"
+      "checkNumber": "数量を選択してください",
+      "imageCount": "生成枚数",
+      "imageCountSuffix": "枚",
+      "imageCountPh": "アセットごとに生成する画像の枚数"
     },
     "script": {
       "searchPlaceholder": "シナリオ名を検索...",
