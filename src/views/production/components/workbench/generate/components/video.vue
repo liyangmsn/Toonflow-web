@@ -39,7 +39,11 @@
           </template>
           <div v-if="v.state === '生成中'" class="loadingOverlay c fc">
             <t-loading size="24px" />
-            <span class="loadingText">{{ v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t("workbench.generate.generating") }}</span>
+            <span
+              class="loadingText"
+              :title="v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t('workbench.generate.generating')">
+              {{ v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t("workbench.generate.generating") }}
+            </span>
             <div class="progressTrack">
               <div class="progressFill" :style="{ width: `${Math.max(0, Math.min(100, Number(v.percent) || 0))}%` }"></div>
             </div>
