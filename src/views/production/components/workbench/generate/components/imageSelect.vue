@@ -1,47 +1,61 @@
 <template>
   <div class="imageUploadBox ac">
-    <div class="uploadBtn c fc" :class="{ audioUploadBtn: item.fileType === 'audio' }" v-for="(item, index) in imageList" :key="index">
-      <template v-if="item.src">
-        <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
-          <t-image :src="item.src" fit="contain" class="uploadPreview">
-            <template #overlayContent>
-              <div class="imageToolsWrap">
-                <ImageTools :src="item.src!" position="br" />
-              </div>
-            </template>
-          </t-image>
-        </t-tooltip>
-        <t-tooltip theme="primary" v-else-if="item.fileType == 'audio'" :content="item.name || ''">
-          <div class="mediaPreview audioPreview">
-            <div class="audioPreviewHeader">
-              <i-acoustic size="20" />
-              <span class="audioPreviewName">{{ item.name }}</span>
+    <!-- 分组展示已选参考（分镜/片段视频按来源，资产按媒体类型），组内横向排列 -->
+    <div class="referenceGroup" v-for="group in groupedReferences" :key="group.key">
+      <div class="groupLabel" v-if="group.label">
+        {{ group.label }}
+        <span class="groupCount">{{ group.items.length }}</span>
+      </div>
+      <div class="groupItems ac">
+        <div class="uploadBtn c fc" :class="{ audioUploadBtn: item.fileType === 'audio' }" v-for="{ item, index } in group.items" :key="index">
+          <template v-if="item.src">
+            <t-tooltip v-if="item.fileType == 'image'" theme="primary" :content="item.name || ''">
+              <t-image :src="item.src" fit="contain" class="uploadPreview">
+                <template #overlayContent>
+                  <div class="imageToolsWrap">
+                    <ImageTools :src="item.src!" position="br" />
+                  </div>
+                </template>
+              </t-image>
+            </t-tooltip>
+            <div v-else-if="item.fileType == 'audio'" class="mediaPreview audioPreview">
+							<div class="audioPreviewHeader">
+								<!-- 音频卡片底部是播放器，编号放在标题行避免遮挡控件 -->
+								<span class="refNumber refNumberInline" v-if="referenceNumbers.get(index)">{{ referenceNumbers.get(index) }}</span>
+								<i-acoustic size="20" />
+								<span class="audioPreviewName">{{ item.name }}</span>
+							</div>
+							<audio :src="item.src" controls preload="metadata" class="audioPlayer" />
+						</div>
+            <div v-else-if="item.fileType == 'video'" class="mediaPreview videoPreview">
+              <video class="uploadPreview" :src="item.src" preload="metadata" muted />
             </div>
-            <audio :src="item.src" controls preload="metadata" class="audioPlayer" />
+          </template>
+          <template v-else>
+            <t-tooltip theme="primary" :content="item?.prompt || ''">
+              <span style="font-size: 20px">文</span>
+            </t-tooltip>
+          </template>
+          <div class="imageTitleWrap" v-if="(item.sources == 'storyboard' || item.sources == 'video') && item.index != null">
+            {{ item.sources == "video" ? `#${item.index + 1} · V${item.version ?? 1}` : `P${item.index + 1}` }}
           </div>
-        </t-tooltip>
-        <div v-else-if="item.fileType == 'video'" class="mediaPreview videoPreview">
-          <video class="uploadPreview" :src="item.src" preload="metadata" muted />
+          <!-- 左下角引用编号，对应提示词里的 @图N / @视频N / @音频N -->
+          <div class="refNumber" v-if="item.fileType !== 'audio' && referenceNumbers.get(index)">
+            {{ referenceNumbers.get(index) }}
+          </div>
+          <div class="clearBtn" @click="splitImage(index)">
+            <i-close size="12" />
+          </div>
+          <!-- 分镜/片段视频已由分组标题表达来源，只在混排的首尾帧分组里补角标 -->
+          <div class="source" v-if="group.key === 'frame'">
+            <t-tag size="small">
+              {{ sourceLabel(item.sources) }}
+            </t-tag>
+          </div>
         </div>
-      </template>
-      <template v-else>
-        <t-tooltip theme="primary" :content="item?.prompt || ''">
-          <span style="font-size: 20px">文</span>
-        </t-tooltip>
-      </template>
-      <div class="imageTitleWrap" v-if="(item.sources == 'storyboard' || item.sources == 'video') && item.index != null">
-        {{ item.sources == "video" ? `#${item.index + 1} · V${item.version ?? 1}` : `P${item.index + 1}` }}
-      </div>
-      <div class="clearBtn" @click="splitImage(index)">
-        <i-close size="12" />
-      </div>
-      <div class="source">
-        <t-tag size="small">
-          {{ sourceLabel(item.sources) }}
-        </t-tag>
       </div>
     </div>
-    <div class="uploadBtn c fc" v-if="isShowAddImage" @click="handleMixedAdd()">
+    <div class="uploadBtn c fc addBtn" v-if="isShowAddImage" @click="handleMixedAdd()">
       <i-plus size="24"></i-plus>
       {{ $t("workbench.generate.addReference") }}
     </div>
@@ -148,6 +162,80 @@ function sourceLabel(sources?: string) {
   if (sources === "video") return $t("workbench.generate.clipVideo");
   return $t("workbench.generate.assets");
 }
+
+/** 分组展示顺序，未列出的分组排在最后 */
+const GROUP_ORDER = ["source:storyboard", "source:video", "media:image", "media:video", "media:audio"];
+
+/**
+ * 计算分组 key：
+ * 分镜、片段视频这类来源本身就是独立语义，单独成组；
+ * 资产来源的条目再按媒体类型细分。
+ */
+function groupKeyOf(item: UploadItem): string {
+  if (item?.sources && item.sources !== "assets") return `source:${item.sources}`;
+  return `media:${item?.fileType ?? "image"}`;
+}
+
+/** 分组标题 */
+function groupLabelOf(key: string): string {
+  switch (key) {
+    case "media:image":
+      return $t("workbench.production.media.image");
+    case "media:video":
+      return $t("workbench.production.media.video");
+    case "media:audio":
+      return $t("workbench.production.media.audio");
+    case "source:storyboard":
+      return $t("workbench.generate.storyboard");
+    case "source:video":
+      return $t("workbench.generate.clipVideo");
+    default:
+      return sourceLabel(key.replace("source:", ""));
+  }
+}
+
+/**
+ * 每个条目在提示词中的引用序号（对应 @图N / @视频N / @音频N）。
+ * 计数规则与 promptEditor 的 references 保持一致：跳过无 src 的项，按媒体类型分别累加。
+ */
+const referenceNumbers = computed(() => {
+  const map = new Map<number, number>();
+  const counters: Record<string, number> = {};
+  imageList.value.forEach((item, index) => {
+    if (!item?.src) return;
+    const type = getFileTypeByExt(item.src);
+    counters[type] = (counters[type] ?? 0) + 1;
+    map.set(index, counters[type]);
+  });
+  return map;
+});
+
+/** 首尾帧类模式下槽位顺序有语义（0=首帧 1=尾帧），不做分组 */
+const isFrameMode = computed(() => ["startFrameOptional", "endFrameOptional", "startEndRequired"].includes(props.mode as string));
+
+/**
+ * 分组已选参考，组内保持横向排列。
+ * items 内保留原始下标 index，删除时仍作用于 imageList 的真实位置。
+ */
+const groupedReferences = computed(() => {
+  const entries = imageList.value.map((item, index) => ({ item, index }));
+  if (isFrameMode.value) {
+    return entries.length ? [{ key: "frame", label: "", items: entries }] : [];
+  }
+  const groups = new Map<string, { item: UploadItem; index: number }[]>();
+  entries.forEach(({ item, index }) => {
+    const key = groupKeyOf(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push({ item, index });
+  });
+  return [...groups.entries()]
+    .sort((a, b) => {
+      const ai = GROUP_ORDER.indexOf(a[0]);
+      const bi = GROUP_ORDER.indexOf(b[0]);
+      return (ai === -1 ? GROUP_ORDER.length : ai) - (bi === -1 ? GROUP_ORDER.length : bi);
+    })
+    .map(([key, items]) => ({ key, label: groupLabelOf(key), items }));
+});
 
 /** 空占位项，用于首尾帧模式中未设置的槽位 */
 const EMPTY_SLOT: UploadItem = { fileType: "image", id: null, src: "" } as any;
@@ -329,7 +417,9 @@ function splitImage(index: number) {
 
 <style lang="scss" scoped>
 .imageUploadBox {
-  gap: 8px;
+  gap: 14px;
+  color: #000;
+  align-items: flex-end;
   overflow-x: auto;
   flex-wrap: nowrap;
   padding-bottom: 6px;
@@ -343,6 +433,34 @@ function splitImage(index: number) {
   &::-webkit-scrollbar-track {
     background-color: var(--td-bg-color-secondarycontainer);
     border-radius: 4px;
+  }
+  .referenceGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .groupLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #000;
+    white-space: nowrap;
+    .groupCount {
+      font-size: 11px;
+      font-weight: 500;
+      color: #000;
+      background: var(--td-bg-color-component);
+      border-radius: 8px;
+      padding: 0 6px;
+      line-height: 16px;
+    }
+  }
+  .groupItems {
+    gap: 8px;
+    flex-wrap: nowrap;
   }
   .imageTitleWrap {
     z-index: 999;
@@ -359,6 +477,32 @@ function splitImage(index: number) {
     user-select: none;
     white-space: nowrap;
   }
+  .refNumber {
+    z-index: 999;
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    user-select: none;
+    &.refNumberInline {
+      position: static;
+      flex-shrink: 0;
+      background: var(--td-bg-color-component);
+      color: var(--td-text-color-secondary);
+    }
+  }
   .uploadBtn {
     width: 80px;
     min-width: 80px;
@@ -367,9 +511,15 @@ function splitImage(index: number) {
     position: relative;
     border: 1px dashed var(--td-component-border);
     border-radius: 8px;
+    color: #000;
     &:hover {
       border-color: var(--td-text-color);
       cursor: pointer;
+    }
+    &.addBtn {
+      font-size: 12px;
+      gap: 2px;
+      flex-shrink: 0;
     }
 
     .uploadPreview {
@@ -404,12 +554,12 @@ function splitImage(index: number) {
       gap: 4px;
       .mediaLabel {
         font-size: 11px;
-        color: var(--td-text-color-secondary);
+        color: #000;
       }
       &.audioPreview {
         position: relative;
         background: var(--td-bg-color-secondarycontainer);
-        color: var(--td-text-color-primary);
+        color: #000;
         padding: 8px;
         box-sizing: border-box;
 
@@ -426,7 +576,7 @@ function splitImage(index: number) {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          color: var(--td-text-color-primary);
+          color: #000;
           font-size: 12px;
         }
 
