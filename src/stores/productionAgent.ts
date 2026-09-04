@@ -256,6 +256,14 @@ function makeProductionAgentStore(projectId: string) {
               callback({ success: false, message: e?.message || "批量视频提示词生成失败" });
             }
           });
+          s.on("generateWorkbenchVideos", async (data, callback) => {
+            try {
+              const { data: videos } = await axios.post("/production/workbench/batchGenerateVideo", data);
+              callback({ success: true, videos });
+            } catch (e: any) {
+              callback({ success: false, message: e.message });
+            }
+          });
           s.on("addStoryboard", async (data, callback) => {
             try {
               const insertVal = createStoryboardValue(data);
@@ -263,6 +271,7 @@ function makeProductionAgentStore(projectId: string) {
               await addStoryboardInfo([insertVal]);
               throttledFn();
               callback({ success: true, message: $t("storyboard.assets.derivativeAddSuccess") });
+              void associateStoryboardAssets(insertVal);
             } catch (e) {
               callback({ success: false, message: (e as any)?.message || $t("storyboard.assets.addStoryboardFailed") });
             }
@@ -283,6 +292,9 @@ function makeProductionAgentStore(projectId: string) {
                 }
                 flowData.value.storyboard.splice(insertIndex, 0, insertVal);
                 await addStoryboardInfo([insertVal]);
+                throttledFn();
+                callback({ success: true, message: "分镜新增成功" });
+                void associateStoryboardAssets(insertVal);
               } else {
                 const target = flowData.value.storyboard.find((item) => item.id === data.id);
                 if (!target) return callback({ success: false, message: `未找到分镜面板 ${data.id}` });
@@ -311,9 +323,10 @@ function makeProductionAgentStore(projectId: string) {
                   associateAssetsIds: updateResult.associateAssetsIds,
                 });
                 if (data.groupKey === undefined) target.groupKey = previousGroupKey;
+                throttledFn();
+                callback({ success: true, message: "分镜替换成功" });
+                void associateStoryboardAssets(target);
               }
-              throttledFn();
-              callback({ success: true, message: data.id == null ? "分镜新增成功" : "分镜替换成功" });
             } catch (e) {
               callback({ success: false, message: (e as any)?.message || "分镜面板操作失败" });
             }
@@ -616,6 +629,28 @@ function makeProductionAgentStore(projectId: string) {
         source.prompt = updated.prompt ?? "";
         source.shouldGenerateImage = updated.shouldGenerateImage ?? 0;
         source.associateAssetsIds = updated.associateAssetsIds;
+      }
+    }
+
+    async function associateStoryboardAssets(item: Storyboard) {
+      const storyboardId = item.id;
+      const storyboardTable = item.storyboardTable;
+      try {
+        if (storyboardId == null) throw new Error("分镜面板尚未保存");
+        if (!storyboardTable) throw new Error(`分镜面板 ${storyboardId} 缺少当前片段分镜表`);
+        const { data } = await axios.post("/production/storyboard/associateAssets", {
+          id: storyboardId,
+          projectId,
+          scriptId: episodesId.value,
+          storyboardTable,
+        });
+        const target = flowData.value.storyboard.find((storyboard) => storyboard.id === storyboardId);
+        if (!target) return;
+        target.associateAssetsIds = data.associateAssetsIds;
+        throttledFn();
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        window.$message.error(`分镜面板 ${storyboardId} 关联资产失败：${reason}`);
       }
     }
 
