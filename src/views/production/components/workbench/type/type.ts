@@ -76,6 +76,33 @@ interface TrackItem {
   referenceItems?: { id: number; sources: "storyboard" | "assets" | "video" }[];
 }
 
+type VideoProgressNodeState = "pending" | "running" | "finished" | "error";
+
+interface VideoProgressNode {
+  nodeId: string;
+  displayNodeId: string;
+  realNodeId: string;
+  parentNodeId: string | null;
+  classType: string;
+  state: VideoProgressNodeState;
+  current: number;
+  total: number;
+  percent: number;
+}
+
+interface VideoProgressDetails {
+  source: "progress_state" | "status" | "execution" | "cache";
+  activeNodeId?: string;
+  queueRemaining?: number;
+  /** 当前已知工作流节点总数；快照会补齐 pending 节点。 */
+  completedNodes: number;
+  runningNodes: number;
+  errorNodes: number;
+  totalNodes: number;
+  cachedNodes: string[];
+  nodes: VideoProgressNode[];
+}
+
 interface VideoItem {
   id: number;
   src: string;
@@ -85,6 +112,8 @@ interface VideoItem {
   percent?: number | null;
   /** 生成阶段描述 */
   stage?: string | null;
+  /** ComfyUI progress_state 的完整节点进度快照 */
+  details?: VideoProgressDetails | null;
 }
 interface TrackMediaBase {
   src: string;
@@ -119,6 +148,8 @@ interface HistoryVideoItem {
   percent?: number | null;
   /** 生成阶段描述 */
   stage?: string | null;
+  /** ComfyUI progress_state 的完整节点进度快照 */
+  details?: VideoProgressDetails | null;
   duration?: number | string | null;
   projectId?: number | null;
   scriptId?: number | null;

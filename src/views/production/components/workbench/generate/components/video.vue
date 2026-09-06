@@ -44,6 +44,7 @@
               :title="v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t('workbench.generate.generating')">
               {{ v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t("workbench.generate.generating") }}
             </span>
+            <span v-if="progressDetailText(v)" class="progressDetailText">{{ progressDetailText(v) }}</span>
             <div class="progressTrack">
               <div class="progressFill" :style="{ width: `${Math.max(0, Math.min(100, Number(v.percent) || 0))}%` }"></div>
             </div>
@@ -237,6 +238,18 @@ function handlePlayerClose() {
 function previewVideo(v: HistoryVideoItem) {
   if (v.state === "生成中" || v.state === "生成失败") return;
 }
+
+function progressDetailText(v: HistoryVideoItem): string {
+  const details = v.details;
+  if (!details) return "";
+  const activeNode = details.activeNodeId ? details.nodes.find((node) => node.nodeId === details.activeNodeId) : undefined;
+  const parts = details.totalNodes > 0 ? [`节点 ${details.completedNodes}/${details.totalNodes}`] : [];
+  if (activeNode) parts.push(activeNode.classType || activeNode.nodeId);
+  if (details.queueRemaining != null) parts.push(`队列剩余 ${details.queueRemaining}`);
+  if (details.cachedNodes.length > 0) parts.push(`缓存 ${details.cachedNodes.length}`);
+  if (details.errorNodes > 0) parts.push(`错误 ${details.errorNodes}`);
+  return parts.join(" · ");
+}
 </script>
 
 <style lang="scss" scoped>
@@ -295,6 +308,14 @@ function previewVideo(v: HistoryVideoItem) {
           white-space: nowrap;
           font-size: 11px;
           color: #fff;
+        }
+        .progressDetailText {
+          max-width: 116px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.8);
         }
         .progressTrack {
           width: 104px;

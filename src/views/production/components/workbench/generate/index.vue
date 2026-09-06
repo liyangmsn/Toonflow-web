@@ -464,6 +464,7 @@ async function getVideoList() {
         errorReason?: string;
         percent?: number;
         stage?: string;
+        details?: VideoProgressDetails;
       }) => {
         for (const track of trackList.value) {
           const findData = track.videoList.find((i) => i.id == item.id);
@@ -473,6 +474,7 @@ async function getVideoList() {
             findData.errorReason = item?.errorReason ?? "";
             findData.percent = item?.percent ?? findData.percent ?? 0;
             findData.stage = item?.stage ?? findData.stage ?? "";
+            findData.details = item?.details ?? findData.details ?? null;
             break;
           }
         }
