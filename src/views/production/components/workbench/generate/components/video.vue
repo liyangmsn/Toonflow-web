@@ -44,7 +44,7 @@
               :title="v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t('workbench.generate.generating')">
               {{ v.stage ? `${v.percent ?? 0}% · ${v.stage}` : $t("workbench.generate.generating") }}
             </span>
-            <span v-if="progressDetailText(v)" class="progressDetailText">{{ progressDetailText(v) }}</span>
+            <span v-if="progressDetailText(v)" class="progressDetailText" :title="progressDetailText(v)">{{ progressDetailText(v) }}</span>
             <div class="progressTrack">
               <div class="progressFill" :style="{ width: `${Math.max(0, Math.min(100, Number(v.percent) || 0))}%` }"></div>
             </div>
@@ -300,6 +300,7 @@ function progressDetailText(v: HistoryVideoItem): string {
         position: absolute;
         inset: 0;
         background: rgba(0, 0, 0, 0.45);
+        line-height: 1.2;
         gap: 4px;
         .loadingText {
           max-width: 116px;
