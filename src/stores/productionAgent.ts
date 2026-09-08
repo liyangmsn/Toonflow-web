@@ -655,7 +655,15 @@ function makeProductionAgentStore(projectId: string) {
         target.associateAssetsIds = data.associateAssetsIds;
         throttledFn();
       } catch (e) {
-        const reason = e instanceof Error ? e.message : String(e);
+        const failure = e as { message?: string; data?: { id: number; associateAssetsIds: number[] } };
+        if (failure.data && failure.data.id === storyboardId && Array.isArray(failure.data.associateAssetsIds)) {
+          const target = flowData.value.storyboard.find((storyboard) => storyboard.id === storyboardId);
+          if (target) {
+            target.associateAssetsIds = failure.data.associateAssetsIds;
+            throttledFn();
+          }
+        }
+        const reason = typeof failure.message === "string" ? failure.message : String(e);
         window.$message.error(`分镜面板 ${storyboardId} 关联资产失败：${reason}`);
       }
     }
