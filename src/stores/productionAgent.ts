@@ -291,7 +291,7 @@ function makeProductionAgentStore(projectId: string) {
                   insertIndex = targetIndex;
                 }
                 flowData.value.storyboard.splice(insertIndex, 0, insertVal);
-                await addStoryboardInfo([insertVal]);
+                await addStoryboardInfo([insertVal], data.insertAfterId, data.insertBeforeId);
                 throttledFn();
                 callback({ success: true, message: "分镜新增成功" });
                 void associateStoryboardAssets(insertVal);
@@ -313,16 +313,20 @@ function makeProductionAgentStore(projectId: string) {
                   projectId,
                 });
 
+                const previousTrack = target.track;
+                const previousTrackId = target.trackId;
                 const previousGroupKey = target.groupKey;
                 Object.assign(target, createStoryboardValue(data), {
                   id: data.id,
+                  track: updateResult.track ?? previousTrack,
+                  trackId: updateResult.trackId ?? previousTrackId,
+                  groupKey: updateResult.groupKey ?? previousGroupKey,
                   src: null,
                   flowId: undefined,
                   prompt: "",
                   shouldGenerateImage: 0,
                   associateAssetsIds: updateResult.associateAssetsIds,
                 });
-                if (data.groupKey === undefined) target.groupKey = previousGroupKey;
                 throttledFn();
                 callback({ success: true, message: "分镜替换成功" });
                 void associateStoryboardAssets(target);
@@ -611,11 +615,13 @@ function makeProductionAgentStore(projectId: string) {
       if (!connected.value) connect();
       socket.value!.emit("updateContext", ctx);
     }
-    async function addStoryboardInfo(items: any[]) {
+    async function addStoryboardInfo(items: any[], insertAfterId?: number | null, insertBeforeId?: number | null) {
       const { data } = await axios.post("/production/storyboard/batchAddStoryboardInfo", {
         scriptId: episodesId.value,
         data: items,
         projectId: projectId,
+        insertAfterId,
+        insertBeforeId,
       });
 
       for (const [index, updated] of (data as Storyboard[]).entries()) {
