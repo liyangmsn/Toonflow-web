@@ -25,7 +25,13 @@
       </template>
 
       <template #node-generated="{ id, data }">
-        <generatedNode :id="id" :data="data" :projectId="+project!.id" :videoDesc="props.flowData.videoDesc" @keep="sureNode" />
+        <generatedNode
+          :id="id"
+          :data="data"
+          :projectId="+project!.id"
+          :storyboardId="props.flowData.storyboardId"
+          :videoDesc="props.flowData.videoDesc"
+          @keep="sureNode" />
       </template>
       <template #edge-removeLine="edgeProps">
         <removeLine v-bind="edgeProps" />
@@ -96,6 +102,7 @@ const { layout } = useLayout("editImage");
 const props = withDefaults(
   defineProps<{
     flowData: {
+      storyboardId?: number | null;
       flowId?: number | null;
       videoDesc?: string;
       resultImages: { src: string; prompt: string }[]; // 结果图 url 和提示词
@@ -227,7 +234,15 @@ const addUploadNode = (type: string, image: string = "", prompt: string = "") =>
     id: newNodeId,
     type,
     position: { x: newX, y: newY },
-    data: type === "generated" ? createGeneratedData(image, prompt) : { image },
+    data:
+      type === "generated"
+        ? {
+            ...createGeneratedData(image, prompt),
+            model: project.value!.imageModel,
+            quality: project.value!.imageQuality,
+            ratio: project.value!.videoRatio,
+          }
+        : { image },
   } as NodeType);
 
   return newNodeId;

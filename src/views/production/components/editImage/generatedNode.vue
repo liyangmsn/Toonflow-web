@@ -46,6 +46,18 @@
         <div class="videoDescLabel">{{ $t("workbench.production.editImage.videoDesc") }}</div>
         <div class="videoDescContent">{{ videoDesc }}</div>
       </div>
+      <div v-if="storyboardId != null" class="promptHeader ac jb">
+        <span>{{ $t("workbench.production.node.storyboard.prompt") }}</span>
+        <t-button
+          theme="primary"
+          variant="outline"
+          size="small"
+          :loading="promptGenerating"
+          :disabled="generating || promptGenerating || !videoDesc"
+          @click.stop="handleGeneratePrompt">
+          {{ $t("workbench.assets.generatePrompt") }}
+        </t-button>
+      </div>
       <div class="text w">
         <PromptEditor v-model="data.prompt" :references="references" :placeholder="$t('workbench.production.editImage.promptPlaceholder')" />
       </div>
@@ -66,12 +78,24 @@
 
         <div class="f" style="gap: 5px; margin-left: 5px">
           <t-popup :content="$t('workbench.production.editImage.generateBtn')">
-            <t-button theme="primary" size="small" class="generateBtn" :disabled="generating" :loading="generating" @click="handleGenerate">
+            <t-button
+              theme="primary"
+              size="small"
+              class="generateBtn"
+              :disabled="generating || promptGenerating"
+              :loading="generating"
+              @click="handleGenerate">
               <template #icon><i-arrow-up /></template>
             </t-button>
           </t-popup>
           <t-popup :content="$t('workbench.production.save')">
-            <t-button theme="primary" size="small" class="keepBtn" :disabled="generating" :loading="generating" @click="handleKeep">
+            <t-button
+              theme="primary"
+              size="small"
+              class="keepBtn"
+              :disabled="generating || promptGenerating"
+              :loading="generating"
+              @click="handleKeep">
               <template #icon><i-save /></template>
             </t-button>
           </t-popup>
@@ -93,13 +117,13 @@ import type { DropdownOption } from "tdesign-vue-next/es/dropdown";
 import type { Storyboard } from "../../utils/flowBuilder";
 import openAssetsSelector from "@/utils/assetsCheck";
 import { useFileDialog } from "@vueuse/core";
-import projectStore from "@/stores/project";
-const { project } = storeToRefs(projectStore());
+import productionAgentStore from "@/stores/productionAgent";
 const openStoryboardCheck = inject<() => Promise<Storyboard[]>>("openStoryboardCheck")!;
 const { open, onChange, onCancel } = useFileDialog({ multiple: false, reset: true, accept: ".png,.jpg,.jpeg" });
 
 const selected = ref(true);
 const generating = ref(false);
+const promptGenerating = ref(false);
 const episodesId = inject<Ref<number>>("episodesId")!;
 
 const emit = defineEmits(["keep"]);
@@ -120,6 +144,7 @@ const props = defineProps<{
   id: string;
   data: GeneratedNodeData;
   projectId: number;
+  storyboardId?: number | null;
   videoDesc?: string;
 }>();
 
@@ -182,6 +207,42 @@ async function getStoryboardImage() {
     props.data.generatedImage = filePath;
   }
 }
+async function handleGeneratePrompt() {
+  if (promptGenerating.value || generating.value || props.storyboardId == null || !videoDesc.value) return;
+  if (!props.data.model) return window.$message.error($t("workbench.production.editImage.selectModel"));
+  if (!props.data.quality) return window.$message.error($t("workbench.production.editImage.selectQuality"));
+  if (!props.data.ratio) return window.$message.error($t("workbench.production.editImage.selectRatio"));
+  promptGenerating.value = true;
+  try {
+    const { data } = await axios.post<{ results: { id: number; ok: boolean; reason?: string }[] }>(
+      "/production/storyboard/batchGenerateStoryboardPrompt",
+      {
+        projectId: props.projectId,
+        scriptId: episodesId.value,
+        storyboardIds: [props.storyboardId],
+        imageSettings: {
+          ratio: props.data.ratio,
+          quality: props.data.quality,
+          model: props.data.model,
+        },
+      },
+    );
+    const result = data.results.find((item) => item.id === props.storyboardId);
+    if (!result) throw new Error("未返回当前分镜的提示词生成结果");
+    if (!result.ok) throw new Error(result.reason);
+
+    const agentStore = productionAgentStore();
+    await agentStore.getFlowData();
+    const storyboard = agentStore.flowData.storyboard.find((item) => item.id === props.storyboardId);
+    if (!storyboard?.prompt) throw new Error("未读取到当前分镜的提示词");
+    props.data.prompt = storyboard.prompt;
+  } catch (e: any) {
+    window.$message.error(e.message);
+  } finally {
+    promptGenerating.value = false;
+  }
+}
+
 // 生成
 async function handleGenerate() {
   if (!props.data.model) return window.$message.error($t("workbench.production.editImage.selectModel"));
@@ -210,11 +271,6 @@ function handleKeep() {
   if (!props.data.generatedImage) return window.$message.error($t("workbench.production.editImage.generateFirst"));
   emit("keep", props.data.generatedImage);
 }
-onMounted(() => {
-  props.data.model = project.value?.imageModel ?? "";
-  props.data.quality = project.value?.imageQuality ?? "";
-  props.data.ratio = project.value?.videoRatio ?? "16:9";
-});
 </script>
 
 <style lang="scss" scoped>
@@ -353,6 +409,12 @@ onMounted(() => {
           background: var(--td-bg-color-component);
         }
       }
+    }
+
+    .promptHeader {
+      padding: 10px;
+      font-size: 12px;
+      color: var(--td-text-color-secondary);
     }
 
     .text {

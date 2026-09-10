@@ -185,6 +185,7 @@ function handleDeleteSelected() {
   });
 }
 const currentRow = ref<{
+  storyboardId?: number | null;
   flowId?: number | null;
   videoDesc?: string;
   resultImages: { src: string; prompt: string }[];
@@ -279,6 +280,7 @@ function editStoryboaryImage(item: Storyboard, images: string[], insertAfterInde
     insertAfterIndex,
   };
   currentRow.value = {
+    storyboardId: currentRowStoryboardInfo.value.id,
     flowId: item?.flowId ?? null,
     videoDesc: item?.videoDesc ?? "",
     resultImages: [],
