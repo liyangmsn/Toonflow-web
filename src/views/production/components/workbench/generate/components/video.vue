@@ -76,8 +76,9 @@
     v-model:visible="videoPlayerVisible"
     :header="$t('workbench.generate.previewVideo')"
     :footer="false"
-    width="800px"
+    width="auto"
     destroy-on-close
+    placement="center"
     @close="handlePlayerClose">
     <div class="videoPlayerBox">
       <video v-if="playingVideoSrc" :src="playingVideoSrc" controls autoplay class="videoPlayer" />
@@ -393,8 +394,8 @@ function progressDetailText(v: HistoryVideoItem): string {
   border-radius: 4px;
   overflow: hidden;
   .videoPlayer {
-    width: 100%;
-    max-height: 450px;
+    width: 1152px;
+    max-height: 640px;
     outline: none;
   }
 }
