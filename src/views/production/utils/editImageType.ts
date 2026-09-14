@@ -13,6 +13,10 @@ export interface GeneratedNodeData {
   steps: number;
 }
 
+export interface TextNodeData {
+  text: string;
+}
+
 export interface NodeUploadData {
   type: "upload";
   id: string;
@@ -27,14 +31,21 @@ export interface NodeGeneratedData {
   data: GeneratedNodeData;
 }
 
-export type NodeType = NodeUploadData | NodeGeneratedData;
+export interface NodeTextData {
+  type: "text";
+  id: string;
+  position: { x: number; y: number };
+  data: TextNodeData;
+}
+
+export type NodeType = NodeUploadData | NodeGeneratedData | NodeTextData;
 
 // ===== 精简后用于传输的类型 =====
 export interface CleanNode {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: UploadNodeData | Omit<GeneratedNodeData, "steps">;
+  data: UploadNodeData | TextNodeData | Omit<GeneratedNodeData, "steps">;
 }
 
 export interface CleanEdge {
@@ -63,23 +74,30 @@ export function createGeneratedData(image = "", prompt = ""): GeneratedNodeData 
   };
 }
 
+export function createTextData(text = ""): TextNodeData {
+  return { text };
+}
+
 // ===== 数据精简工具函数 =====
+function cleanNodeData(n: NodeType): CleanNode["data"] {
+  if (n.type === "upload") return { image: n.data.image };
+  if (n.type === "text") return { text: n.data.text };
+  return {
+    generatedImage: n.data.generatedImage,
+    references: n.data.references?.map((r) => ({ image: r.image })) ?? [],
+    prompt: n.data.prompt,
+    model: n.data.model,
+    ratio: n.data.ratio,
+    quality: n.data.quality,
+  };
+}
+
 export function cleanNodes(nodes: NodeType[]): CleanNode[] {
   return nodes.map((n) => ({
     id: n.id,
     type: n.type,
     position: n.position,
-    data:
-      n.type === "upload"
-        ? { image: n.data.image }
-        : {
-            generatedImage: n.data.generatedImage,
-            references: n.data.references?.map((r) => ({ image: r.image })) ?? [],
-            prompt: n.data.prompt,
-            model: n.data.model,
-            ratio: n.data.ratio,
-            quality: n.data.quality,
-          },
+    data: cleanNodeData(n),
   }));
 }
 

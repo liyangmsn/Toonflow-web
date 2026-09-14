@@ -33,6 +33,9 @@
           :videoDesc="props.flowData.videoDesc"
           @keep="sureNode" />
       </template>
+      <template #node-text="{ id, data }">
+        <textNode :id="id" :data="data" />
+      </template>
       <template #edge-removeLine="edgeProps">
         <removeLine v-bind="edgeProps" />
       </template>
@@ -72,6 +75,7 @@ import { Background } from "@vue-flow/background";
 import { Controls } from "@vue-flow/controls";
 import uploadNode from "./uploadNode.vue";
 import generatedNode from "./generatedNode.vue";
+import textNode from "./textNode.vue";
 import storyboardImageCheck from "@/components/storyboardImageCheck.vue";
 import type { Storyboard } from "../../utils/flowBuilder";
 
@@ -82,8 +86,8 @@ import removeLine from "./removeLine.vue";
 import projectStore from "@/stores/project";
 
 import axios from "@/utils/axios";
-import type { NodeType, UploadNodeData, GeneratedNodeData } from "../../utils/editImageType";
-import { DEFAULT_EDGE_OPTIONS, createGeneratedData, cleanNodes, cleanEdges } from "../../utils/editImageType";
+import type { NodeType, UploadNodeData, GeneratedNodeData, TextNodeData } from "../../utils/editImageType";
+import { DEFAULT_EDGE_OPTIONS, createGeneratedData, createTextData, cleanNodes, cleanEdges } from "../../utils/editImageType";
 import { useLayout } from "../../utils/dagre";
 import { v4 as uuid } from "uuid";
 
@@ -124,7 +128,7 @@ const visible = defineModel({
   type: Boolean,
   default: false,
 });
-const { addEdges, getNodes, getEdges, updateNodeData } = useVueFlow("editImage");
+const { addEdges, getNodes, getEdges, updateNodeData, removeNodes } = useVueFlow("editImage");
 
 const nodes = ref<NodeType[]>([]);
 const edges = ref<Edge<any, any, string>[]>([]);
@@ -178,14 +182,13 @@ function _doSyncReferences() {
     const sourceIds = edgesByTarget.get(genNode.id) ?? [];
     const connectedImages = sourceIds
       .map((id) => nodeMap.get(id))
-      .filter((n): n is NonNullable<typeof n> => !!n)
+      // 分镜描述等文本节点只提供描述文本，不参与参考图编号
+      .filter((n): n is NonNullable<typeof n> => n?.type === "upload" || n?.type === "generated")
       .map((n) => {
         if (n.type === "upload") {
           return { image: (n.data as UploadNodeData).image || "" };
-        } else if (n.type === "generated") {
-          return { image: (n.data as GeneratedNodeData).generatedImage || "" };
         }
-        return { image: "" };
+        return { image: (n.data as GeneratedNodeData).generatedImage || "" };
       });
 
     // 仅在数据变化时才更新，避免无效的响应式触发
@@ -195,6 +198,40 @@ function _doSyncReferences() {
       updateNodeData(genNode.id, { references: connectedImages });
     }
   }
+}
+
+// 分镜描述以独立文本节点呈现，并连接到面板内所有图片生成节点
+function syncDescNode() {
+  const desc = props.flowData.videoDesc?.trim();
+  let descNode = nodes.value.find((n) => n.type === "text");
+  if (!desc) {
+    if (descNode) removeNodes(descNode.id);
+    return;
+  }
+
+  const generatedNodes = nodes.value.filter((n) => n.type === "generated");
+  if (!generatedNodes.length) return;
+
+  if (!descNode) {
+    descNode = {
+      id: uuid(),
+      type: "text",
+      position: {
+        x: Math.min(...nodes.value.map((n) => n.position.x)),
+        y: Math.min(...nodes.value.map((n) => n.position.y)) - 380,
+      },
+      data: createTextData(desc),
+    };
+    nodes.value.push(descNode);
+  } else if ((descNode.data as TextNodeData).text !== desc) {
+    updateNodeData(descNode.id, { text: desc });
+  }
+
+  const sourceId = descNode.id;
+  const newEdges = generatedNodes
+    .filter((n) => !edges.value.some((e) => e.source === sourceId && e.target === n.id))
+    .map((n) => ({ id: uuid(), source: sourceId, target: n.id, ...DEFAULT_EDGE_OPTIONS }));
+  edges.value.push(...newEdges);
 }
 
 // 连接处理
@@ -245,6 +282,9 @@ const addUploadNode = (type: string, image: string = "", prompt: string = "") =>
         : { image },
   } as NodeType);
 
+  // 新增图片生成节点时，同步分镜描述节点连线
+  if (type === "generated") nextTick(syncDescNode);
+
   return newNodeId;
 };
 //保存节点
@@ -277,6 +317,7 @@ onMounted(async () => {
     edges.value = data.edges.map((e: any) => ({ ...e, ...DEFAULT_EDGE_OPTIONS }));
     nodes.value = data.nodes;
     await nextTick();
+    syncDescNode();
     setTimeout(() => fitView({ duration: 300 }), 100);
   } catch (e) {
     window.$message.error((e as any).message || $t("workbench.production.editImage.fetchFailed"));
@@ -305,6 +346,7 @@ function buildFlow() {
   }
   nextTick(() => {
     syncReferences();
+    syncDescNode();
     setTimeout(() => fitView({ duration: 300 }), 100);
   });
 }
