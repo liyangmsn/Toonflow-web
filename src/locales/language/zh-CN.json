@@ -1279,7 +1279,10 @@
           "editInfo": "提示词修改",
           "selectedCount": "已选 {count} 项",
           "clearSelection": "取消选择",
-          "selectAll": "全选"
+          "selectAll": "全选",
+          "panelId": "ID",
+          "scene": "场次",
+          "fragment": "片段"
         },
         "storyboardTable": {
           "title": "分镜表",

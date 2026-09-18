@@ -1029,7 +1029,10 @@
           "imageLoadFailed": "โหลดรูปภาพล้มเหลว",
           "promptPlaceholder": "กรุณากรอกคำที่พร้อมท์",
           "prompt": "คำพูดที่รวดเร็ว",
-          "editInfo": "การปรับเปลี่ยนคำทันที"
+          "editInfo": "การปรับเปลี่ยนคำทันที",
+          "panelId": "ID",
+          "scene": "ฉาก",
+          "fragment": "ช่วง"
         },
         "storyboardTable": {
           "title": "ตารางสตอรี่บอร์ด",

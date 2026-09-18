@@ -1186,7 +1186,10 @@
           "editInfo": "Prompt word modification",
           "selectedCount": "{count} selected",
           "clearSelection": "Clear Selection",
-          "selectAll": "Select All"
+          "selectAll": "Select All",
+          "panelId": "ID",
+          "scene": "Scene",
+          "fragment": "Segment"
         },
         "storyboardTable": {
           "title": "Storyboard Table",

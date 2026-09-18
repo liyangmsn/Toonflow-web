@@ -1033,7 +1033,10 @@
           "imageLoadFailed": "圖片載入失敗",
           "promptPlaceholder": "請輸入提示詞",
           "prompt": "提示詞",
-          "editInfo": "提示詞修改"
+          "editInfo": "提示詞修改",
+          "panelId": "ID",
+          "scene": "場次",
+          "fragment": "片段"
         },
         "storyboardTable": {
           "title": "分鏡表",

@@ -33,6 +33,15 @@
                     <t-tag class="frameTypeTag" :style="{ backgroundColor: tagColors[index % tagColors.length] }">
                       S{{ String(index + 1).padStart(2, "0") }}
                     </t-tag>
+                    <t-tag class="frameMetaTag" theme="default" variant="light">
+                      {{ $t("workbench.production.node.storyboard.panelId") }} {{ item.id ?? "-" }}
+                    </t-tag>
+                    <t-tag class="frameMetaTag" theme="primary" variant="light">
+                      {{ $t("workbench.production.node.storyboard.scene") }} {{ frameGroups[index]?.scene ?? "-" }}
+                    </t-tag>
+                    <t-tag class="frameMetaTag" theme="success" variant="light">
+                      {{ $t("workbench.production.node.storyboard.fragment") }} {{ frameGroups[index]?.fragment ?? "-" }}
+                    </t-tag>
                   </div>
 
                   <t-image
@@ -54,16 +63,18 @@
                     </t-tooltip>
                     <t-empty v-else size="small" :title="$t('workbench.production.node.storyboard.notGenerated')" />
                   </div>
-                  <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.deleteNode')">
-                    <div class="remove ac" :style="{ transform: `scale(${styleMaxSize})` }" @click.stop="removeFn(item.id!)">
-                      <i-delete theme="outline" size="18" fill="#fff" />
-                    </div>
-                  </t-tooltip>
-                  <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.editNode')">
-                    <div class="editNode ac" :style="{ transform: `scale(${styleMaxSize})` }" @click.stop="editInfo(item)">
-                      <i-edit theme="outline" size="18" fill="#fff" />
-                    </div>
-                  </t-tooltip>
+                  <div class="imageActions ac" :style="{ transform: `scale(${styleMaxSize})` }">
+                    <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.editNode')">
+                      <div class="editNode ac" @click.stop="editInfo(item)">
+                        <i-edit theme="outline" size="18" fill="#fff" />
+                      </div>
+                    </t-tooltip>
+                    <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.deleteNode')">
+                      <div class="remove ac" @click.stop="removeFn(item.id!)">
+                        <i-delete theme="outline" size="18" fill="#fff" />
+                      </div>
+                    </t-tooltip>
+                  </div>
                 </div>
               </div>
               <div class="addBetween addBetween--right" :class="{ expanded: hoveredIndex === index }">
@@ -148,6 +159,18 @@ const gridScale = useLocalStorage("storyboardGridScale", 1);
 
 const hoveredIndex = ref<number | null>(null);
 const selectedIds = ref<number[]>([]);
+
+/**
+ * 面板分组身份由后端写入 groupKey，格式为 s<场次序号>-g<片段序号>。
+ * 历史数据或自动创建的 uuid 无法解析时返回空值，由模板兜底展示 "-"。
+ */
+function parseGroupKey(groupKey?: string | null) {
+  const match = String(groupKey ?? "").match(/^s(\d+)-g(\d+)$/i);
+  return match ? { scene: Number(match[1]), fragment: Number(match[2]) } : { scene: null, fragment: null };
+}
+
+/** 各分镜面板对应的场次、片段编号，用于卡片信息展示 */
+const frameGroups = computed(() => storyboard.value.map((item) => parseGroupKey(item.groupKey)));
 
 function setHoveredFrame(index: number | null) {
   hoveredIndex.value = index;
@@ -553,37 +576,33 @@ function editInfo(item: Storyboard) {
     flex-shrink: 0;
     transition: opacity 0.2s ease;
     &:hover {
-      .remove,
-      .editNode {
+      .imageActions {
         opacity: 1;
       }
     }
-    .remove {
+    .imageActions {
       position: absolute;
-      top: 3px;
-      right: 3px;
+      bottom: 3px;
+      left: 3px;
       z-index: 9999;
+      gap: 6px;
+      opacity: 0;
+      transform-origin: bottom left;
+    }
+    .remove {
       padding: 5px;
       border-radius: 10px;
       background-color: rgba(220, 50, 50, 0.7);
       cursor: pointer;
-      opacity: 0;
-      transform-origin: top right;
       &:hover {
         background-color: rgba(220, 50, 50, 1);
       }
     }
     .editNode {
-      position: absolute;
-      bottom: 3px;
-      left: 3px;
-      z-index: 9999;
       padding: 5px;
       border-radius: 10px;
       background-color: rgba(24, 144, 255, 0.7);
       cursor: pointer;
-      transform-origin: bottom left;
-      opacity: 0;
       &:hover {
         background-color: rgba(24, 144, 255, 1);
       }
@@ -623,9 +642,17 @@ function editInfo(item: Storyboard) {
   .frameCheckbox {
     position: absolute;
     left: 3px;
+    right: 3px;
     top: 3px;
     z-index: 3;
+    flex-wrap: wrap;
+    gap: 4px;
     transform-origin: top left;
+    // 整行不拦截点击，图片区域仍可点开编辑；仅复选框保持可交互
+    pointer-events: none;
+    :deep(.t-checkbox) {
+      pointer-events: auto;
+    }
   }
 
   .frameTypeTag {
@@ -637,6 +664,16 @@ function editInfo(item: Storyboard) {
     padding: 0 4px;
     line-height: 18px;
     border-radius: 3px;
+  }
+
+  .frameMetaTag {
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0 5px;
+    font-size: 10px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .frameTag {

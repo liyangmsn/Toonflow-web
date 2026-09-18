@@ -1019,7 +1019,10 @@
           "imageLoadFailed": "Tải hình ảnh thất bại",
           "promptPlaceholder": "Vui lòng nhập từ gợi ý",
           "prompt": "lời nhắc",
-          "editInfo": "Sửa đổi từ nhanh chóng"
+          "editInfo": "Sửa đổi từ nhanh chóng",
+          "panelId": "ID",
+          "scene": "Cảnh",
+          "fragment": "Phân đoạn"
         },
         "storyboardTable": {
           "title": "Bảng danh sách phân cảnh",
