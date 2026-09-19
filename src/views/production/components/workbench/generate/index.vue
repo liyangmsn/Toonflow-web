@@ -88,6 +88,20 @@ const modelParmas = ref<ModelSetting>({
   audio: false,
 });
 
+const VIDEO_RESOLUTION_STORAGE_KEY = "toonflow:workbench:video-resolution";
+
+function getVideoResolutionStorageKey(model: string) {
+  return `${VIDEO_RESOLUTION_STORAGE_KEY}:${encodeURIComponent(model)}`;
+}
+
+function getStoredVideoResolution(model: string) {
+  return localStorage.getItem(getVideoResolutionStorageKey(model));
+}
+
+function storeVideoResolution(model: string, resolution: string) {
+  localStorage.setItem(getVideoResolutionStorageKey(model), resolution);
+}
+
 const storyboardList = ref<StoryboardItem[]>([]); // 分镜列表
 const referenceVideoList = ref<ReferenceVideoItem[]>([]); // 可用作参考的片段视频
 
@@ -200,11 +214,17 @@ watch(
       return;
     }
     axios.post("/modelSelect/getModelDetail", { modelId: val }).then(({ data }) => {
+      if (modelParmas.value.model !== val) return;
       modeOptions.value = data;
       modelParmas.value.audio = data.audio === true || data.audio === "true" || data.audio == "optional";
       const drMap = data.durationResolutionMap;
       if (Array.isArray(drMap) && drMap.length > 0) {
-        if (drMap[0].resolution?.length) modelParmas.value.resolution = drMap[0].resolution[0];
+        if (drMap[0].resolution?.length) {
+          const storedResolution = getStoredVideoResolution(val);
+          modelParmas.value.resolution = storedResolution && drMap[0].resolution.includes(storedResolution)
+            ? storedResolution
+            : drMap[0].resolution[0];
+        }
         if (drMap[0].duration?.length) modelParmas.value.duration = clampDuration(modelParmas.value.duration);
       }
 
@@ -222,6 +242,13 @@ watch(
         modeChange(newMode);
       }
     });
+  },
+);
+
+watch(
+  () => [modelParmas.value.model, modelParmas.value.resolution] as const,
+  ([model, resolution], [previousModel]) => {
+    if (model && model === previousModel && resolution) storeVideoResolution(model, resolution);
   },
 );
 function parseMode(value: string): VideoMode | null {

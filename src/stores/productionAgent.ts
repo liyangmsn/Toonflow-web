@@ -158,6 +158,13 @@ function makeProductionAgentStore(projectId: string) {
             flowData.value.storyboard.sort((a, b) => (orderMap.get(a.id ?? -1) ?? Number.MAX_SAFE_INTEGER) - (orderMap.get(b.id ?? -1) ?? Number.MAX_SAFE_INTEGER));
             throttledFn();
           });
+          s.on("storyboardDescriptionUpdated", (data) => {
+            if (data?.id == null || typeof data.videoDesc !== "string") return;
+            const target = flowData.value.storyboard.find((item) => item.id === data.id);
+            if (!target) return;
+            target.videoDesc = data.videoDesc;
+            throttledFn();
+          });
           s.on("addDeriveAsset", async (data, callback) => {
             const assets = flowData.value.assets.find((a) => a.id === data.assetsId);
             if (!assets) return callback({ success: false, message: $t("storyboard.assets.notExist") });
