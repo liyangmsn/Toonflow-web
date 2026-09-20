@@ -30,17 +30,14 @@
                   }">
                   <div class="ac frameCheckbox" :style="{ transform: `scale(${styleMaxSize})` }">
                     <t-checkbox :checked="selectedIds.includes(item.id!)" @click.stop :key="item?.id || index" :value="item.id" />
-                    <t-tag class="frameTypeTag" :style="{ backgroundColor: tagColors[index % tagColors.length] }">
-                      S{{ String(index + 1).padStart(2, "0") }}
+                    <t-tag class="frameMetaTag frameTypeTag" variant="light" :style="{ backgroundColor: tagColors[index % tagColors.length] }">
+                      #{{ String(index + 1).padStart(2, "0") }}
                     </t-tag>
-                    <t-tag class="frameMetaTag" theme="default" variant="light">
-                      {{ $t("workbench.production.node.storyboard.panelId") }} {{ item.id ?? "-" }}
+                    <t-tag class="frameMetaTag frameTypeTag" variant="light" :style="{ backgroundColor: tagColors[index % tagColors.length] }">
+                      {{ $t("workbench.production.node.storyboard.panelId") }}:{{ item.id ?? "-" }}
                     </t-tag>
-                    <t-tag class="frameMetaTag" theme="primary" variant="light">
-                      {{ $t("workbench.production.node.storyboard.scene") }} {{ frameGroups[index]?.scene ?? "-" }}
-                    </t-tag>
-                    <t-tag class="frameMetaTag" theme="success" variant="light">
-                      {{ $t("workbench.production.node.storyboard.fragment") }} {{ frameGroups[index]?.fragment ?? "-" }}
+                    <t-tag class="frameMetaTag frameGroupTag" variant="light" :style="{ backgroundColor: tagColors[index % tagColors.length] }">
+                        {{ frameGroupLabels[index] }}
                     </t-tag>
                   </div>
 
@@ -171,6 +168,17 @@ function parseGroupKey(groupKey?: string | null) {
 
 /** 各分镜面板对应的场次、片段编号，用于卡片信息展示 */
 const frameGroups = computed(() => storyboard.value.map((item) => parseGroupKey(item.groupKey)));
+
+/** 场次、片段合并为简写标签，例如 S2-G1；无法解析时兜底为 "-" */
+const frameGroupLabels = computed(() => frameGroups.value.map(({ scene, fragment }) => (scene == null ? "-" : `S${scene}-G${fragment}`)));
+
+/** 简写标签的完整含义，鼠标悬浮时展示，避免卡片上文字过长 */
+function groupTooltip(index: number) {
+  const group = frameGroups.value[index] ?? { scene: null, fragment: null };
+  const sceneText = `${$t("workbench.production.node.storyboard.scene")} ${group.scene ?? "-"}`;
+  const fragmentText = `${$t("workbench.production.node.storyboard.fragment")} ${group.fragment ?? "-"}`;
+  return `${sceneText} · ${fragmentText}`;
+}
 
 function setHoveredFrame(index: number | null) {
   hoveredIndex.value = index;
@@ -655,25 +663,30 @@ function editInfo(item: Storyboard) {
     }
   }
 
-  .frameTypeTag {
-    color: #fff;
-    font-size: 10px;
-    font-weight: 600;
-    border: none;
-    z-index: 2;
-    padding: 0 4px;
-    line-height: 18px;
-    border-radius: 3px;
-  }
-
+  // 三个标签共用同一套几何与排版样式，仅通过主题色区分含义
   .frameMetaTag {
     max-width: 100%;
     overflow: hidden;
-    padding: 0 5px;
+    padding: 0 6px;
     font-size: 10px;
+    font-weight: 600;
     line-height: 18px;
+    border: none;
+    border-radius: 4px;
     text-overflow: ellipsis;
     white-space: nowrap;
+    z-index: 2;
+  }
+
+  .frameTypeTag {
+    // 帧序号沿用彩色底 + 白字，字体与尺寸与其他标签保持一致
+    color: #fff;
+  }
+
+  .frameGroupTag {
+    // 标签处于 pointer-events: none 的容器内，需恢复交互才能触发 tooltip
+    pointer-events: auto;
+    cursor: default;
   }
 
   .frameTag {
